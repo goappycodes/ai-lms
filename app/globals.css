@@ -25,7 +25,11 @@
   --shadow-sm: 0 1px 2px rgba(27, 26, 31, 0.05);
   --shadow: 0 6px 28px rgba(27, 26, 31, 0.08), 0 1px 3px rgba(27, 26, 31, 0.05);
   --shadow-lg: 0 28px 64px rgba(27, 26, 31, 0.18);
-  --nav-h: 66px;
+
+  /* Layout system — ONE gutter everywhere, full-width shell */
+  --page-x: clamp(24px, 4vw, 56px);
+  --sidebar-w: 384px;
+  --nav-h: 68px;
 
   --font-display: Georgia, "Times New Roman", serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -61,6 +65,7 @@ h3 {
   margin: 0 0 0.4em;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 h1,
 h2 {
@@ -81,7 +86,48 @@ a {
   font-size: 12px;
 }
 
-/* Brand mark + wordmark (shared) */
+/* ---------- A11y + system polish ---------- */
+::selection {
+  background: rgba(232, 56, 88, 0.16);
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--crimson);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Slim, quiet scrollbars everywhere (Windows default was heavy) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d8cfc0 transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #d8cfc0;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #bfb29c;
+}
+
+/* ---------- Brand ---------- */
 .brand {
   display: flex;
   align-items: center;
@@ -111,8 +157,6 @@ a {
   letter-spacing: 0.01em;
   color: var(--text);
 }
-
-/* NEXIS wordmark echo */
 .nexis {
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -121,7 +165,7 @@ a {
   color: var(--crimson);
 }
 
-/* ---------- Top nav (dark, premium) ---------- */
+/* ---------- Top nav (dark, full-width, shared gutter) ---------- */
 .topnav {
   position: sticky;
   top: 0;
@@ -129,12 +173,12 @@ a {
   height: var(--nav-h);
   background: var(--ink-nav);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  /* Plane separation from the light content below */
+  box-shadow: 0 8px 28px rgba(20, 18, 22, 0.14);
 }
 .topnav-inner {
   height: 100%;
-  max-width: 1220px;
-  margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 var(--page-x);
   display: flex;
   align-items: center;
   gap: 28px;
@@ -209,7 +253,6 @@ a {
   padding: 4px 11px;
   font-size: 12px;
 }
-/* light context override (login) */
 .auth .lang-toggle {
   border-color: var(--border-strong);
 }
@@ -221,38 +264,39 @@ a {
   color: #fff;
 }
 
-/* ---------- Layout ---------- */
+/* ---------- Page layout (full-width, aligned to --page-x) ---------- */
 .container {
-  max-width: 1220px;
-  margin: 0 auto;
-  padding: 40px 24px 72px;
+  padding: 36px var(--page-x) 88px;
 }
 .container.narrow {
-  max-width: 780px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 .page-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 .page-head h1 {
-  font-size: 32px;
+  font-size: clamp(28px, 2.6vw, 34px);
   margin: 0 0 4px;
 }
 .section-title {
   font-family: var(--font-display), Georgia, serif;
   font-weight: 600;
   font-size: 21px;
-  margin: 40px 0 16px;
+  margin: 44px 0 18px;
 }
 .crumb {
   display: inline-block;
   color: var(--muted);
   font-weight: 600;
   font-size: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .crumb:hover {
   color: var(--crimson);
@@ -306,8 +350,8 @@ a {
 /* ---------- Track cards ---------- */
 .track-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 26px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 28px;
 }
 .track-card {
   background: var(--surface);
@@ -352,7 +396,7 @@ a {
   opacity: 0.92;
 }
 .track-body {
-  padding: 18px 20px 20px;
+  padding: 20px 22px 22px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -390,22 +434,24 @@ a {
   border-radius: 999px;
 }
 
-/* ---------- Player ---------- */
+/* ---------- Player (full-width: content + fixed sidebar) ---------- */
 .player {
   display: grid;
-  grid-template-columns: 1fr 372px;
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-w);
   align-items: start;
-  max-width: 1320px;
-  margin: 0 auto;
 }
 .player-main {
-  padding: 26px 30px 72px;
+  padding: 30px 44px 88px var(--page-x);
   min-width: 0;
+}
+/* Vertical rhythm: video stage → actions → resources panel */
+.player-main .panel {
+  margin-top: 32px;
 }
 .stage {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 .video {
   position: relative;
@@ -469,12 +515,12 @@ a {
   position: absolute;
   left: 0;
   top: 0;
-  padding: 22px 24px;
+  padding: 24px 26px;
 }
 .video-overlay h1 {
-  font-size: 22px;
+  font-size: clamp(18px, 1.8vw, 24px);
   margin: 10px 0 0;
-  max-width: 72%;
+  max-width: 30ch;
   color: #fff;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
 }
@@ -495,7 +541,7 @@ a {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 14px 18px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -503,9 +549,9 @@ a {
 }
 .scrubber {
   flex: 1;
-  height: 5px;
+  height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.24);
   overflow: hidden;
 }
 .scrubber i {
@@ -529,7 +575,7 @@ a {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 28px;
   box-shadow: var(--shadow);
 }
 .panel.center {
@@ -545,7 +591,11 @@ a {
 }
 .tools {
   font-size: 14px;
-  margin: 0 0 8px;
+  margin: 0 0 16px;
+}
+.panel h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
 }
 .resource-list {
   list-style: none;
@@ -581,9 +631,12 @@ a {
   border-radius: 5px;
 }
 .discussion {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
+}
+.discussion p {
+  margin: 0;
 }
 
 /* ---------- Curriculum sidebar ---------- */
@@ -595,9 +648,19 @@ a {
   overflow-y: auto;
   background: var(--surface);
   border-left: 1px solid var(--border);
+  /* keep its own slim scrollbar even quieter */
+  scrollbar-color: #e2d9cb transparent;
+}
+.curriculum::-webkit-scrollbar {
+  width: 8px;
 }
 .curriculum-head {
-  padding: 22px 20px 14px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(6px);
+  padding: 24px 24px 16px;
   border-bottom: 1px solid var(--border);
 }
 .curriculum-head h2 {
@@ -610,16 +673,19 @@ a {
 .phase-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0 24px;
 }
 .phase {
   border-bottom: 1px solid var(--border);
+}
+.phase:last-child {
+  border-bottom: 0;
 }
 .phase-head {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 14px 20px 6px;
+  padding: 16px 24px 6px;
 }
 .phase-index {
   font-size: 10.5px;
@@ -641,7 +707,7 @@ a {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 10px 20px;
+  padding: 10px 24px;
   font-size: 13.5px;
   transition: background 0.12s;
 }
@@ -660,6 +726,7 @@ a {
 .session-dur {
   color: var(--muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .check {
   flex: none;
@@ -766,7 +833,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
 }
 .cert-border {
   position: relative;
@@ -843,7 +910,6 @@ a {
   height: 60px;
   border-radius: 50%;
   background: radial-gradient(circle at 32% 30%, var(--gold-soft), var(--gold) 75%);
-  color: #5a4412;
   display: grid;
   place-items: center;
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), var(--shadow);
@@ -860,14 +926,14 @@ a {
 /* ---------- Stats + tables ---------- */
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
 }
 .stat {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 22px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -877,6 +943,7 @@ a {
   font-family: var(--font-display), Georgia, serif;
   font-size: 30px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .stat-label {
   font-size: 13px;
@@ -919,7 +986,7 @@ a {
   grid-template-columns: 2fr 1fr 1fr 1.2fr 1fr;
   align-items: center;
   gap: 12px;
-  padding: 15px 20px;
+  padding: 15px 22px;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
@@ -991,17 +1058,15 @@ a {
   color: #fff;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- Footer (same gutter as nav/content) ---------- */
 .site-footer {
   flex-shrink: 0;
   background: var(--ink-nav);
   color: rgba(244, 238, 227, 0.72);
-  margin-top: 40px;
+  margin-top: 48px;
 }
 .footer-inner {
-  max-width: 1220px;
-  margin: 0 auto;
-  padding: 48px 24px 32px;
+  padding: 52px var(--page-x) 36px;
   display: flex;
   justify-content: space-between;
   gap: 40px;
@@ -1047,9 +1112,7 @@ a {
 }
 .footer-bar {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 18px 24px;
-  max-width: 1220px;
-  margin: 0 auto;
+  padding: 18px var(--page-x);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1070,9 +1133,17 @@ a {
 }
 
 /* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  :root {
+    --sidebar-w: 340px;
+  }
+}
 @media (max-width: 900px) {
   .player {
     grid-template-columns: 1fr;
+  }
+  .player-main {
+    padding-right: var(--page-x);
   }
   .curriculum {
     position: static;
@@ -1080,8 +1151,13 @@ a {
     border-left: 0;
     border-top: 1px solid var(--border);
   }
+  .curriculum-head {
+    position: static;
+    backdrop-filter: none;
+    background: var(--surface);
+  }
   .stat-row {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .tr {
     grid-template-columns: 1.6fr 0.7fr 1fr;
@@ -1106,5 +1182,11 @@ a {
   }
   .footer-cols {
     gap: 32px;
+  }
+  .cert-border {
+    padding: 36px 22px;
+  }
+  .cert-name {
+    font-size: 30px;
   }
 }
