@@ -5,6 +5,7 @@ import { bad, notFound, ok, serverError } from "@/lib/api";
 import { createVideo, getLatestVideo, getLesson } from "@/lib/db/repo";
 import { uploadPathFor } from "@/lib/video/pipeline";
 import { startEncodeJob } from "@/lib/video/jobs";
+import { findBinary } from "@/lib/video/ffmpeg";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,15 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
+
+    // Encoding is deliberately off-platform (needs ffmpeg + a writable disk).
+    // On hosts without ffmpeg (e.g. Vercel serverless) reject with guidance.
+    if (!findBinary("ffmpeg")) {
+      return bad(
+        "This server can't encode video (no ffmpeg — e.g. Vercel). Upload videos from a machine running the app locally with R2 configured; they'll encode, publish to R2, and appear here automatically.",
+        501
+      );
+    }
 
     const form = await req.formData();
     const file = form.get("file");
