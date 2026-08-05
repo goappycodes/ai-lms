@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Skeleton, SnakeBar } from "@/components/Skeleton";
 
 // --- Shapes (plain, no server imports) --------------------------------------
 type Video = {
@@ -121,7 +122,14 @@ function QuizPanel({ lessonId, onSaved }: { lessonId: string; onSaved: () => voi
     }
   }
 
-  if (!loaded) return <div className="quiz-editor muted">Loading quiz…</div>;
+  if (!loaded)
+    return (
+      <div className="quiz-editor">
+        <Skeleton w={140} h={14} style={{ marginBottom: 10 }} />
+        <Skeleton w="100%" h={44} r={10} style={{ marginBottom: 8 }} />
+        <Skeleton w="100%" h={44} r={10} />
+      </div>
+    );
   return (
     <div className="quiz-editor">
       <div className="quiz-top">
@@ -226,6 +234,7 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
   const [jobs, setJobs] = useState<Record<string, { progress: number; stage: string; status: string }>>({});
   const [openQuiz, setOpenQuiz] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(0);
   const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   const reload = useCallback(async () => {
@@ -238,7 +247,10 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
   }, []);
 
   function guard<T>(fn: () => Promise<T>) {
-    return fn().catch((e) => setErr((e as Error).message));
+    setBusy((b) => b + 1);
+    return fn()
+      .catch((e) => setErr((e as Error).message))
+      .finally(() => setBusy((b) => b - 1));
   }
 
   async function addChapter() {
@@ -342,6 +354,7 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
 
   return (
     <div className="studio">
+      {busy > 0 && <SnakeBar className="snake-top" />}
       <div className="studio-head">
         <div>
           <Link href="/admin/studio" className="crumb">← All courses</Link>

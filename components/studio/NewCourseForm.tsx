@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SnakeSpinner } from "@/components/Skeleton";
 
 export default function NewCourseForm() {
   const router = useRouter();
@@ -57,7 +58,13 @@ export default function NewCourseForm() {
       {err && <p className="form-err">{err}</p>}
       <div className="mini-actions">
         <button className="btn btn-primary" disabled={busy || title.length < 2}>
-          {busy ? "Creating…" : "Create"}
+          {busy ? (
+            <>
+              <SnakeSpinner size={14} /> Creating…
+            </>
+          ) : (
+            "Create"
+          )}
         </button>
         <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
           Cancel

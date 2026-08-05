@@ -1,9 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Native / node-only packages used by the video pipeline and DB must not be
-  // bundled by webpack for server components / route handlers.
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
+  // Node-only packages (DB driver, S3 client) must stay external to the bundle.
   experimental: {
-    serverComponentsExternalPackages: ["@aws-sdk/client-s3"],
+    serverComponentsExternalPackages: ["@aws-sdk/client-s3", "pg"],
   },
 };
 

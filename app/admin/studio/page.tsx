@@ -4,7 +4,7 @@ import NewCourseForm from "@/components/studio/NewCourseForm";
 import SeedButton from "@/components/studio/SeedButton";
 import ConfigNotice from "@/components/studio/ConfigNotice";
 import { dbConfigured } from "@/lib/env";
-import { listChapters, listCourses, listLessons } from "@/lib/db/repo";
+import { listCoursesWithCounts } from "@/lib/db/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,16 +12,13 @@ export const dynamic = "force-dynamic";
 export default async function StudioHome() {
   if (!dbConfigured()) return <ConfigNotice />;
 
-  let courses, cards;
+  let cards;
   try {
-    courses = await listCourses();
-    cards = await Promise.all(
-      courses.map(async (c) => {
-        const chapters = await listChapters(c.id);
-        const lessonCounts = await Promise.all(chapters.map((ch) => listLessons(ch.id)));
-        return { course: c, chapterCount: chapters.length, lessonCount: lessonCounts.reduce((n, l) => n + l.length, 0) };
-      })
-    );
+    cards = (await listCoursesWithCounts()).map((c) => ({
+      course: c,
+      chapterCount: c.chapter_count,
+      lessonCount: c.lesson_count,
+    }));
   } catch (e) {
     return <ConfigNotice detail={e instanceof Error ? e.message : String(e)} />;
   }
@@ -39,7 +36,7 @@ export default async function StudioHome() {
           <NewCourseForm />
         </div>
 
-        {courses.length === 0 ? (
+        {cards.length === 0 ? (
           <div className="panel center">
             <h2>No courses yet</h2>
             <p className="muted">Create one, or import the three-track AI Veda curriculum to get started.</p>

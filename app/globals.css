@@ -1567,6 +1567,88 @@ a {
   }
 }
 
+/* ---------- Loading: skeletons + snake loaders ---------- */
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: #ece6dc;
+  border-radius: 8px;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Indeterminate "snake" — a segment that slithers across a track */
+.snake {
+  position: relative;
+  height: 3px;
+  width: 100%;
+  background: rgba(232, 56, 88, 0.14);
+  overflow: hidden;
+  border-radius: 999px;
+}
+.snake > i {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+  animation: snake 1.15s ease-in-out infinite;
+}
+@keyframes snake {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+/* Page-level snake bar, pinned just under the sticky top nav */
+.snake-top {
+  position: fixed;
+  top: var(--nav-h);
+  left: 0;
+  right: 0;
+  z-index: 25;
+  height: 3px;
+  background: rgba(232, 56, 88, 0.12);
+}
+/* When motion is reduced the sliding animation is frozen — keep the bar visible */
+@media (prefers-reduced-motion: reduce) {
+  .snake > i {
+    left: 0;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+
+/* Compact rotating-arc spinner for buttons / inline use */
+.snake-spin {
+  display: inline-block;
+  border: 2px solid rgba(232, 56, 88, 0.25);
+  border-top-color: var(--crimson);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .env-list {
   list-style: none;
   margin: 12px 0 16px;

@@ -377,24 +377,78 @@ export interface CourseTree extends Course {
   certificate: Certificate | null;
 }
 
+function groupBy<T>(items: T[], key: (t: T) => string): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const it of items) {
+    const k = key(it);
+    const arr = m.get(k);
+    if (arr) arr.push(it);
+    else m.set(k, [it]);
+  }
+  return m;
+}
+
+// Batched: a fixed handful of set-based queries regardless of lesson count,
+// instead of ~50 sequential round-trips to the remote DB.
 export async function getCourseTree(courseId: string): Promise<CourseTree | undefined> {
   const course = await getCourse(courseId);
   if (!course) return undefined;
-  const chapterRows = await listChapters(courseId);
-  const chapters: ChapterNode[] = [];
-  for (const ch of chapterRows) {
-    const lessonRows = await listLessons(ch.id);
-    const lessons: LessonNode[] = [];
-    for (const ls of lessonRows) {
-      const quiz = await getQuiz(ls.id);
-      lessons.push({
-        ...ls,
-        video: (await getLatestVideo(ls.id)) ?? null,
-        pdfs: await listPdfs(ls.id),
-        quizCount: quiz ? quiz.questions.length : 0,
-      });
-    }
-    chapters.push({ ...ch, lessons });
+
+  const [chapters, lessons, cert] = await Promise.all([
+    listChapters(courseId),
+    all<Lesson>("SELECT * FROM lessons WHERE course_id = $1 ORDER BY position, created_at", [courseId]),
+    getCertificate(courseId),
+  ]);
+
+  const lessonIds = lessons.map((l) => l.id);
+  let videos: Video[] = [];
+  let pdfs: Pdf[] = [];
+  let quizCounts: { lesson_id: string; n: number }[] = [];
+  if (lessonIds.length) {
+    [videos, pdfs, quizCounts] = await Promise.all([
+      all<Video>(
+        "SELECT DISTINCT ON (lesson_id) * FROM videos WHERE lesson_id = ANY($1::text[]) ORDER BY lesson_id, created_at DESC",
+        [lessonIds]
+      ),
+      all<Pdf>("SELECT * FROM pdfs WHERE lesson_id = ANY($1::text[]) ORDER BY position, created_at", [lessonIds]),
+      all<{ lesson_id: string; n: number }>(
+        `SELECT q.lesson_id, count(qq.id)::int AS n
+         FROM quizzes q LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
+         WHERE q.lesson_id = ANY($1::text[]) GROUP BY q.lesson_id`,
+        [lessonIds]
+      ),
+    ]);
   }
-  return { ...course, chapters, certificate: (await getCertificate(courseId)) ?? null };
+
+  const videoByLesson = new Map(videos.map((v) => [v.lesson_id, v]));
+  const pdfsByLesson = groupBy(pdfs, (p) => p.lesson_id);
+  const quizCountByLesson = new Map(quizCounts.map((q) => [q.lesson_id, q.n]));
+
+  const lessonNodes: LessonNode[] = lessons.map((ls) => ({
+    ...ls,
+    video: videoByLesson.get(ls.id) ?? null,
+    pdfs: pdfsByLesson.get(ls.id) ?? [],
+    quizCount: quizCountByLesson.get(ls.id) ?? 0,
+  }));
+  const lessonsByChapter = groupBy(lessonNodes, (l) => l.chapter_id);
+
+  const chapterNodes: ChapterNode[] = chapters.map((ch) => ({
+    ...ch,
+    lessons: lessonsByChapter.get(ch.id) ?? [],
+  }));
+  return { ...course, chapters: chapterNodes, certificate: cert ?? null };
+}
+
+// One query with subquery counts — for the Studio course grid.
+export interface CourseWithCounts extends Course {
+  chapter_count: number;
+  lesson_count: number;
+}
+export function listCoursesWithCounts(): Promise<CourseWithCounts[]> {
+  return all<CourseWithCounts>(
+    `SELECT c.*,
+       (SELECT count(*)::int FROM chapters ch WHERE ch.course_id = c.id) AS chapter_count,
+       (SELECT count(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count
+     FROM courses c ORDER BY c.position, c.created_at`
+  );
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SnakeSpinner } from "@/components/Skeleton";
 
 export default function SeedButton() {
   const router = useRouter();
@@ -29,7 +30,13 @@ export default function SeedButton() {
   return (
     <div className="seed-row">
       <button className="btn btn-ghost" onClick={seed} disabled={busy}>
-        {busy ? "Importing…" : "Import 3-track curriculum"}
+        {busy ? (
+          <>
+            <SnakeSpinner size={14} /> Importing…
+          </>
+        ) : (
+          "Import 3-track curriculum"
+        )}
       </button>
       {msg && <span className="muted tiny">{msg}</span>}
     </div>
