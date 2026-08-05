@@ -16,3 +16,7 @@ export function r2Configured(): boolean {
     r2.accountId && r2.accessKeyId && r2.secretAccessKey && r2.bucket && r2.publicUrl
   );
 }
+
+export function dbConfigured(): boolean {
+  return Boolean(process.env.SUPABASE_DB_HOST && process.env.SUPABASE_DB_PASSWORD);
+}

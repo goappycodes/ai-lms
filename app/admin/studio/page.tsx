@@ -2,20 +2,29 @@ import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import NewCourseForm from "@/components/studio/NewCourseForm";
 import SeedButton from "@/components/studio/SeedButton";
+import ConfigNotice from "@/components/studio/ConfigNotice";
+import { dbConfigured } from "@/lib/env";
 import { listChapters, listCourses, listLessons } from "@/lib/db/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function StudioHome() {
-  const courses = await listCourses();
-  const cards = await Promise.all(
-    courses.map(async (c) => {
-      const chapters = await listChapters(c.id);
-      const lessonCounts = await Promise.all(chapters.map((ch) => listLessons(ch.id)));
-      return { course: c, chapterCount: chapters.length, lessonCount: lessonCounts.reduce((n, l) => n + l.length, 0) };
-    })
-  );
+  if (!dbConfigured()) return <ConfigNotice />;
+
+  let courses, cards;
+  try {
+    courses = await listCourses();
+    cards = await Promise.all(
+      courses.map(async (c) => {
+        const chapters = await listChapters(c.id);
+        const lessonCounts = await Promise.all(chapters.map((ch) => listLessons(ch.id)));
+        return { course: c, chapterCount: chapters.length, lessonCount: lessonCounts.reduce((n, l) => n + l.length, 0) };
+      })
+    );
+  } catch (e) {
+    return <ConfigNotice detail={e instanceof Error ? e.message : String(e)} />;
+  }
 
   return (
     <>
