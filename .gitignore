@@ -6,3 +6,8 @@
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Backend runtime data (SQLite DB + uploaded originals + encoded output)
+/data
+/public/hls
+/public/files

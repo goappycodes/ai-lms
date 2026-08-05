@@ -1,3 +1,4 @@
+import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import { tracks } from "@/lib/data";
 
@@ -11,7 +12,9 @@ export default function AdminPage() {
             <h1>Admin Console</h1>
             <p className="muted">NEXIS · content, access &amp; usage</p>
           </div>
-          <button className="btn btn-primary">+ Upload session</button>
+          <Link className="btn btn-primary" href="/admin/studio">
+            Open Content Studio →
+          </Link>
         </div>
 
         <h2 className="section-title">Usage this month</h2>

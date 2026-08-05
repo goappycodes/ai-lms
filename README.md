@@ -7,7 +7,8 @@ Plus Jakarta Sans), with **Udemy's learning experience, stripped to basics** as 
 interaction reference — see [`../phase0-lms-brief.md`](../phase0-lms-brief.md).
 
 This is UI scaffolding: real curriculum data, mock auth/progress, and a placeholder video
-stage. No backend yet.
+stage. The **authoring backend is real** (DB + REST API + video pipeline); the student-facing
+screens still read the static curriculum in `lib/data.ts`.
 
 ## Run
 
@@ -16,7 +17,48 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Requires **Node 24+** (uses the built-in `node:sqlite`) and
+**ffmpeg on PATH** for video encoding.
+
+## Backend (course authoring + video pipeline)
+
+Content lives in a local SQLite database (`data/aiveda.db`, via Node's built-in
+`node:sqlite` — no native build). Author it in the **Content Studio** at `/admin/studio`
+(or drive the REST API directly).
+
+**Entities:** Course → Chapter → Lesson; a Lesson holds one Video, many PDFs and one Quiz;
+a Course has one Certificate template.
+
+**Video pipeline (ported from the `ai-lms` experiment).** Upload a source video and the
+server encodes a multi-bitrate HLS ladder with ffmpeg — **1080p → 720p → 480p → 360p → 240p**
+(the 240p "survival rung" targets ~0.6 Mbps), 4 s segments — then publishes it:
+
+- **Cloudflare R2** when configured (`.env.local`) — zero-egress delivery, the experiment's
+  chosen path. Segments cached immutably, playlists short-TTL.
+- **Local `/public/hls/<videoId>`** fallback otherwise, so it works out of the box in dev.
+
+Encoding runs detached; poll `GET /api/videos/:id` for live `progress` / `stage` (the Studio
+does this automatically). Copy `.env.example` → `.env.local` and fill the `R2_*` vars to use R2.
+
+### REST API
+
+| Method + path | Purpose |
+|---|---|
+| `GET/POST /api/courses` · `GET/PATCH/DELETE /api/courses/:id` | Courses (`?tree=1` for the full nested tree) |
+| `GET/POST /api/courses/:id/chapters` · `PATCH/DELETE /api/chapters/:id` | Chapters |
+| `POST /api/chapters/:id/lessons` · `GET/PATCH/DELETE /api/lessons/:id` | Lessons |
+| `POST /api/lessons/:id/video` (multipart) · `GET /api/videos/:id` | Upload video + encode; poll status |
+| `GET/POST /api/lessons/:id/pdfs` · `DELETE /api/pdfs/:id` | Lesson PDFs |
+| `GET/PUT/DELETE /api/lessons/:id/quiz` | Quiz (questions upserted wholesale) |
+| `GET/PUT /api/courses/:id/certificate` | Certificate template |
+| `POST /api/seed` | Import the 3-track curriculum into the DB (idempotent) |
+
+```
+lib/db/       schema.sql, index.ts (connection), repo.ts (typed CRUD)
+lib/video/    ffmpeg.ts (HLS ladder), r2.ts (upload), pipeline.ts (orchestrate), jobs.ts (runner)
+app/api/      route handlers (above)
+app/admin/studio/   authoring UI
+```
 
 ## Screens
 
@@ -47,17 +89,20 @@ components/   TopNav, TrackCard, ProgressBar, CurriculumSidebar, VideoStage, Ses
 lib/         data.ts (curriculum), progress.ts (mock student), types.ts
 ```
 
-## Deliberately NOT built (matches the brief's scope)
+## Deliberately NOT built yet
 
-- **Video playback** — the stage is a placeholder. Wire to the `ai-lms` PoC's hls.js player
-  reading gated HLS from Cloudflare R2 (brief §7).
-- **Auth / DB** — logins, enrollment, and progress are mocked in `lib/progress.ts`.
-- Assessment layer (quizzes, uploads, rubrics), certificate PDF generation, admin uploads —
-  all Phase 1 or later wiring.
+- **Student read-path** — the learner screens still read `lib/data.ts`, not the DB. Point them
+  at `repo`/the API next so authored content shows up for students.
+- **Video playback UI** — the player stage is still a placeholder; wire the `ai-lms` hls.js
+  player to `video.master_url`.
+- **Auth** — no login/enrollment yet; the Studio and APIs are open. Add auth + gate video
+  URLs (signed R2 / Worker) before real use.
+- **Quiz taking + certificate PDF generation** — the quiz/certificate are authored and stored,
+  not yet delivered to students.
 
 ## Next steps to make it real
 
-1. Auth (student/teacher, age-appropriate for under-13) + enrollment.
-2. Replace `VideoStage` placeholder with the hls.js player + **signed R2 / Worker** gating.
-3. Persist progress; drive certificates from verified completion.
-4. Malayalam UI strings (structure is EN-first; add i18n).
+1. Switch the learner pages to read courses from the DB (`getCourseTree`).
+2. hls.js player bound to `master_url`; gate with signed R2 / a Worker.
+3. Auth (student/teacher, age-appropriate for under-13) + per-student progress.
+4. Quiz runner + certificate PDF; Malayalam UI strings (i18n).
