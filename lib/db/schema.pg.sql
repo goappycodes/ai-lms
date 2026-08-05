@@ -1,5 +1,5 @@
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+-- AI Veda LMS schema (Supabase Postgres). Idempotent.
+-- Timestamps are stored as ISO-8601 TEXT to keep the app layer simple.
 
 CREATE TABLE IF NOT EXISTS courses (
   id          TEXT PRIMARY KEY,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS courses (
   audience    TEXT,
   description TEXT,
   accent      TEXT,
-  status      TEXT NOT NULL DEFAULT 'draft',   -- draft | published
+  status      TEXT NOT NULL DEFAULT 'draft',
   position    INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL,
   updated_at  TEXT NOT NULL
@@ -44,14 +44,14 @@ CREATE TABLE IF NOT EXISTS videos (
   id            TEXT PRIMARY KEY,
   lesson_id     TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   original_name TEXT,
-  status        TEXT NOT NULL DEFAULT 'pending',  -- pending|encoding|uploading|ready|error
-  progress      REAL NOT NULL DEFAULT 0,          -- 0..1
+  status        TEXT NOT NULL DEFAULT 'pending',
+  progress      DOUBLE PRECISION NOT NULL DEFAULT 0,
   stage         TEXT,
-  storage       TEXT,                             -- r2 | local
+  storage       TEXT,
   master_url    TEXT,
   poster_url    TEXT,
-  renditions    TEXT,                             -- JSON array of rung names
-  duration_sec  REAL,
+  renditions    TEXT,
+  duration_sec  DOUBLE PRECISION,
   error         TEXT,
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS pdfs (
   title      TEXT NOT NULL,
   filename   TEXT NOT NULL,
   url        TEXT NOT NULL,
-  storage    TEXT NOT NULL,                       -- local | r2
+  storage    TEXT NOT NULL,
   size_bytes INTEGER,
   position   INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions (
   id            TEXT PRIMARY KEY,
   quiz_id       TEXT NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   prompt        TEXT NOT NULL,
-  options       TEXT NOT NULL,                    -- JSON array of strings
+  options       TEXT NOT NULL,
   correct_index INTEGER NOT NULL DEFAULT 0,
   position      INTEGER NOT NULL DEFAULT 0
 );

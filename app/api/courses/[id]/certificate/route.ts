@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getCourse(params.id)) return notFound("course not found");
-    return ok(getCertificate(params.id) ?? null);
+    if (!(await getCourse(params.id))) return notFound("course not found");
+    return ok((await getCertificate(params.id)) ?? null);
   } catch (e) {
     return serverError(e);
   }
@@ -16,10 +16,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getCourse(params.id)) return notFound("course not found");
+    if (!(await getCourse(params.id))) return notFound("course not found");
     const parsed = await parseBody(req, certificateUpsert);
     if ("error" in parsed) return parsed.error;
-    return ok(upsertCertificate(params.id, parsed.data as never));
+    return ok(await upsertCertificate(params.id, parsed.data as never));
   } catch (e) {
     return serverError(e);
   }

@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getChapter(params.id)) return notFound("chapter not found");
-    return ok(listLessons(params.id));
+    if (!(await getChapter(params.id))) return notFound("chapter not found");
+    return ok(await listLessons(params.id));
   } catch (e) {
     return serverError(e);
   }
@@ -16,10 +16,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getChapter(params.id)) return notFound("chapter not found");
+    if (!(await getChapter(params.id))) return notFound("chapter not found");
     const parsed = await parseBody(req, lessonCreate);
     if ("error" in parsed) return parsed.error;
-    return ok(createLesson(params.id, parsed.data), { status: 201 });
+    return ok(await createLesson(params.id, parsed.data), { status: 201 });
   } catch (e) {
     return serverError(e);
   }

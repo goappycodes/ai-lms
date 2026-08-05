@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getLesson(params.id)) return notFound("lesson not found");
-    return ok(listPdfs(params.id));
+    if (!(await getLesson(params.id))) return notFound("lesson not found");
+    return ok(await listPdfs(params.id));
   } catch (e) {
     return serverError(e);
   }
@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getLesson(params.id)) return notFound("lesson not found");
+    if (!(await getLesson(params.id))) return notFound("lesson not found");
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return bad("multipart field 'file' (a PDF) is required");
@@ -55,7 +55,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       storage = "local";
     }
 
-    return ok(createPdf(params.id, { title, filename: file.name, url, storage, sizeBytes: size }), { status: 201 });
+    return ok(await createPdf(params.id, { title, filename: file.name, url, storage, sizeBytes: size }), { status: 201 });
   } catch (e) {
     return serverError(e);
   }

@@ -18,25 +18,25 @@ export async function POST() {
     const created: string[] = [];
     const skipped: string[] = [];
     for (const track of tracks) {
-      if (getCourseBySlug(track.id)) {
+      if (await getCourseBySlug(track.id)) {
         skipped.push(track.id);
         continue;
       }
-      const course = createCourse({
+      const course = await createCourse({
         title: track.name,
         subtitle: track.tagline,
         audience: track.audience,
         accent: track.accent,
       });
-      updateCourse(course.id, { status: "published" });
-      upsertCertificate(course.id, {
+      await updateCourse(course.id, { status: "published" });
+      await upsertCertificate(course.id, {
         signature_name: "Principal",
         signature_title: `${track.name} Track`,
       });
       for (const phase of getPhases(track)) {
-        const chapter = createChapter(course.id, phase.name);
+        const chapter = await createChapter(course.id, phase.name);
         for (const s of phase.sessions) {
-          createLesson(chapter.id, {
+          await createLesson(chapter.id, {
             title: s.title,
             takeaway: s.takeaway,
             tools: s.tools,

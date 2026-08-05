@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getLesson(params.id)) return notFound("lesson not found");
-    return ok(getLatestVideo(params.id) ?? null);
+    if (!(await getLesson(params.id))) return notFound("lesson not found");
+    return ok((await getLatestVideo(params.id)) ?? null);
   } catch (e) {
     return serverError(e);
   }
@@ -21,13 +21,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 // Upload a source video → encode HLS ladder → publish to R2 (or local fallback).
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    if (!getLesson(params.id)) return notFound("lesson not found");
+    if (!(await getLesson(params.id))) return notFound("lesson not found");
 
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return bad("multipart field 'file' (a video) is required");
 
-    const video = createVideo(params.id, file.name);
+    const video = await createVideo(params.id, file.name);
     const dir = uploadPathFor(video.id);
     fs.mkdirSync(dir, { recursive: true });
     const safe = file.name.replace(/[^\w.\-]+/g, "_") || "source.mp4";

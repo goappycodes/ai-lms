@@ -7,8 +7,15 @@ import { listChapters, listCourses, listLessons } from "@/lib/db/repo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default function StudioHome() {
-  const courses = listCourses();
+export default async function StudioHome() {
+  const courses = await listCourses();
+  const cards = await Promise.all(
+    courses.map(async (c) => {
+      const chapters = await listChapters(c.id);
+      const lessonCounts = await Promise.all(chapters.map((ch) => listLessons(ch.id)));
+      return { course: c, chapterCount: chapters.length, lessonCount: lessonCounts.reduce((n, l) => n + l.length, 0) };
+    })
+  );
 
   return (
     <>
@@ -34,25 +41,21 @@ export default function StudioHome() {
         ) : (
           <>
             <div className="studio-grid">
-              {courses.map((c) => {
-                const chapters = listChapters(c.id);
-                const lessons = chapters.reduce((n, ch) => n + listLessons(ch.id).length, 0);
-                return (
-                  <Link key={c.id} href={`/admin/studio/${c.id}`} className="studio-card">
-                    <div className="studio-card-top" style={{ background: c.accent || "var(--ink-nav)" }}>
-                      <span>{c.title}</span>
-                      <em className={"pill " + (c.status === "published" ? "live" : "draft")}>{c.status}</em>
+              {cards.map(({ course: c, chapterCount, lessonCount }) => (
+                <Link key={c.id} href={`/admin/studio/${c.id}`} className="studio-card">
+                  <div className="studio-card-top" style={{ background: c.accent || "var(--ink-nav)" }}>
+                    <span>{c.title}</span>
+                    <em className={"pill " + (c.status === "published" ? "live" : "draft")}>{c.status}</em>
+                  </div>
+                  <div className="studio-card-body">
+                    <p className="muted">{c.subtitle}</p>
+                    <div className="studio-card-meta">
+                      <span>{c.audience}</span>
+                      <span>{chapterCount} ch · {lessonCount} lessons</span>
                     </div>
-                    <div className="studio-card-body">
-                      <p className="muted">{c.subtitle}</p>
-                      <div className="studio-card-meta">
-                        <span>{c.audience}</span>
-                        <span>{chapters.length} ch · {lessons} lessons</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                  </div>
+                </Link>
+              ))}
             </div>
             <div style={{ marginTop: 24 }}>
               <SeedButton />

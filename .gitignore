@@ -11,3 +11,6 @@ next-env.d.ts
 /data
 /public/hls
 /public/files
+
+# Secrets
+creds.txt

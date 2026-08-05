@@ -10,10 +10,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   try {
     const tree = req.nextUrl.searchParams.get("tree");
     if (tree) {
-      const t = getCourseTree(params.id);
+      const t = await getCourseTree(params.id);
       return t ? ok(t) : notFound("course not found");
     }
-    const c = getCourse(params.id);
+    const c = await getCourse(params.id);
     return c ? ok(c) : notFound("course not found");
   } catch (e) {
     return serverError(e);
@@ -24,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const parsed = await parseBody(req, courseUpdate);
     if ("error" in parsed) return parsed.error;
-    const updated = updateCourse(params.id, parsed.data as never);
+    const updated = await updateCourse(params.id, parsed.data as never);
     return updated ? ok(updated) : notFound("course not found");
   } catch (e) {
     return serverError(e);
@@ -33,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
-    return deleteCourse(params.id) ? ok({ deleted: true }) : notFound("course not found");
+    return (await deleteCourse(params.id)) ? ok({ deleted: true }) : notFound("course not found");
   } catch (e) {
     return serverError(e);
   }

@@ -25,7 +25,7 @@ function copyDir(src: string, dest: string) {
 }
 
 export async function processVideo(videoId: string): Promise<void> {
-  const video = getVideo(videoId);
+  const video = await getVideo(videoId);
   if (!video) throw new Error(`video ${videoId} not found`);
 
   const uploadDirPath = uploadPathFor(videoId);
@@ -33,7 +33,7 @@ export async function processVideo(videoId: string): Promise<void> {
   if (!files.length) throw new Error("uploaded source file missing");
   const input = path.join(uploadDirPath, files[0]);
 
-  updateVideo(videoId, { status: "encoding", stage: "Probing source", progress: 0, error: null });
+  await updateVideo(videoId, { status: "encoding", stage: "Probing source", progress: 0, error: null });
 
   // Pre-compute rungs so we can map per-rung progress to an overall number.
   const { height } = probeVideo(input);
@@ -42,16 +42,21 @@ export async function processVideo(videoId: string): Promise<void> {
   const workDir = path.join(DATA_DIR, "work", videoId, "hls");
   fs.rmSync(path.join(DATA_DIR, "work", videoId), { recursive: true, force: true });
 
+  // Throttle DB writes: the DB is now remote (Supabase), and ffmpeg emits
+  // progress many times per second. Persist only on ~2% moves or stage change.
+  let lastWritten = -1;
+  let lastStage = "";
   const result = await encodeHlsLadder(input, workDir, {
     onLog: () => {},
     onProgress: (name, frac) => {
       const i = Math.max(0, expected.indexOf(name));
-      const overall = (i + frac) / expected.length;
-      updateVideo(videoId, {
-        status: "encoding",
-        stage: `Encoding ${name} · ${Math.round(frac * 100)}%`,
-        progress: Number((overall * ENCODE_SHARE).toFixed(3)),
-      });
+      const overall = Number(((i + frac) / expected.length * ENCODE_SHARE).toFixed(3));
+      const stage = `Encoding ${name} · ${Math.round(frac * 100)}%`;
+      if (overall - lastWritten >= 0.02 || name !== lastStage.split(" ")[1]) {
+        lastWritten = overall;
+        lastStage = stage;
+        void updateVideo(videoId, { status: "encoding", stage, progress: overall });
+      }
     },
   });
 
@@ -62,24 +67,28 @@ export async function processVideo(videoId: string): Promise<void> {
   let posterUrl: string | null;
 
   if (r2Configured()) {
-    updateVideo(videoId, { status: "uploading", stage: "Uploading to Cloudflare R2", progress: ENCODE_SHARE });
+    await updateVideo(videoId, { status: "uploading", stage: "Uploading to Cloudflare R2", progress: ENCODE_SHARE });
     const client = makeR2Client();
     await ensureCors(client);
+    let lastPct = -1;
     await uploadDir(client, workDir, keyPrefix, {
       onProgress: (done, total) => {
         const overall = ENCODE_SHARE + (done / total) * (1 - ENCODE_SHARE);
-        updateVideo(videoId, {
-          status: "uploading",
-          stage: `Uploading to R2 · ${done}/${total} files`,
-          progress: Number(overall.toFixed(3)),
-        });
+        if (overall - lastPct >= 0.02 || done === total) {
+          lastPct = overall;
+          void updateVideo(videoId, {
+            status: "uploading",
+            stage: `Uploading to R2 · ${done}/${total} files`,
+            progress: Number(overall.toFixed(3)),
+          });
+        }
       },
     });
     storage = "r2";
     masterUrl = `${r2.publicUrl}/${keyPrefix}/master.m3u8`;
     posterUrl = result.hasPoster ? `${r2.publicUrl}/${keyPrefix}/poster.jpg` : null;
   } else {
-    updateVideo(videoId, { status: "uploading", stage: "Publishing locally (R2 not configured)", progress: ENCODE_SHARE });
+    await updateVideo(videoId, { status: "uploading", stage: "Publishing locally (R2 not configured)", progress: ENCODE_SHARE });
     const publicDir = path.join(process.cwd(), "public", keyPrefix);
     fs.rmSync(publicDir, { recursive: true, force: true });
     copyDir(workDir, publicDir);
@@ -88,7 +97,7 @@ export async function processVideo(videoId: string): Promise<void> {
     posterUrl = result.hasPoster ? `/${keyPrefix}/poster.jpg` : null;
   }
 
-  updateVideo(videoId, {
+  await updateVideo(videoId, {
     status: "ready",
     stage: "Ready",
     progress: 1,
@@ -105,9 +114,9 @@ export async function processVideo(videoId: string): Promise<void> {
 }
 
 // If a video was interrupted mid-encode by a server restart, surface it.
-export function markStaleAsError(lessonId: string) {
-  const v = getLatestVideo(lessonId);
+export async function markStaleAsError(lessonId: string) {
+  const v = await getLatestVideo(lessonId);
   if (v && (v.status === "encoding" || v.status === "uploading")) {
-    updateVideo(v.id, { status: "error", error: "Interrupted by server restart — re-upload to retry." });
+    await updateVideo(v.id, { status: "error", error: "Interrupted by server restart — re-upload to retry." });
   }
 }

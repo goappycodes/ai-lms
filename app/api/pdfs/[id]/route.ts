@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
-    return deletePdf(params.id) ? ok({ deleted: true }) : notFound("pdf not found");
+    return (await deletePdf(params.id)) ? ok({ deleted: true }) : notFound("pdf not found");
   } catch (e) {
     return serverError(e);
   }

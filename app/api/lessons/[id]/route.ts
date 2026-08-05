@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    const lesson = getLesson(params.id);
+    const lesson = await getLesson(params.id);
     if (!lesson) return notFound("lesson not found");
     return ok({
       ...lesson,
-      video: getLatestVideo(params.id) ?? null,
-      pdfs: listPdfs(params.id),
-      quiz: getQuiz(params.id) ?? null,
+      video: (await getLatestVideo(params.id)) ?? null,
+      pdfs: await listPdfs(params.id),
+      quiz: (await getQuiz(params.id)) ?? null,
     });
   } catch (e) {
     return serverError(e);
@@ -26,7 +26,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if ("error" in parsed) return parsed.error;
     const { durationMin, ...rest } = parsed.data;
     const patch = { ...rest, ...(durationMin !== undefined ? { duration_min: durationMin } : {}) };
-    const updated = updateLesson(params.id, patch as never);
+    const updated = await updateLesson(params.id, patch as never);
     return updated ? ok(updated) : notFound("lesson not found");
   } catch (e) {
     return serverError(e);
@@ -35,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
-    return deleteLesson(params.id) ? ok({ deleted: true }) : notFound("lesson not found");
+    return (await deleteLesson(params.id)) ? ok({ deleted: true }) : notFound("lesson not found");
   } catch (e) {
     return serverError(e);
   }

@@ -6,8 +6,8 @@ import { getCourseTree } from "@/lib/db/repo";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default function CourseStudio({ params }: { params: { courseId: string } }) {
-  const tree = getCourseTree(params.courseId);
+export default async function CourseStudio({ params }: { params: { courseId: string } }) {
+  const tree = await getCourseTree(params.courseId);
   if (!tree) notFound();
 
   return (

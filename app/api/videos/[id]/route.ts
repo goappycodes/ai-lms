@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Poll endpoint for encode/upload progress.
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   try {
-    const v = getVideo(params.id);
+    const v = await getVideo(params.id);
     if (!v) return notFound("video not found");
     return ok({
       ...v,

@@ -15,12 +15,12 @@ export function startEncodeJob(videoId: string): void {
   running.add(videoId);
   // Do not await — let the request return immediately.
   processVideo(videoId)
-    .catch((err) => {
+    .catch((err) =>
       updateVideo(videoId, {
         status: "error",
         stage: "Failed",
         error: err instanceof Error ? err.message : String(err),
-      });
-    })
+      })
+    )
     .finally(() => running.delete(videoId));
 }
