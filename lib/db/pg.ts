@@ -6,14 +6,16 @@ const g = globalThis as unknown as { __aivedaPool?: Pool };
 
 export function getPool(): Pool {
   if (!g.__aivedaPool) {
-    const host = process.env.SUPABASE_DB_HOST;
+    // Trim to defend against trailing spaces/newlines pasted into env values.
+    const val = (k: string) => (process.env[k] ?? "").trim();
+    const host = val("SUPABASE_DB_HOST");
     if (!host) throw new Error("SUPABASE_DB_HOST is not set — configure .env.local");
     g.__aivedaPool = new Pool({
       host,
-      port: Number(process.env.SUPABASE_DB_PORT || 5432),
-      user: process.env.SUPABASE_DB_USER,
-      password: process.env.SUPABASE_DB_PASSWORD,
-      database: process.env.SUPABASE_DB_NAME || "postgres",
+      port: Number(val("SUPABASE_DB_PORT") || 5432),
+      user: val("SUPABASE_DB_USER"),
+      password: val("SUPABASE_DB_PASSWORD"),
+      database: val("SUPABASE_DB_NAME") || "postgres",
       ssl: { rejectUnauthorized: false },
       max: 8,
       idleTimeoutMillis: 30_000,
