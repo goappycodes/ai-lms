@@ -2,12 +2,11 @@ export type TrackId = "explorer" | "builder" | "achiever";
 
 export interface Session {
   id: string; // `${trackId}-${n}`
-  n: number; // 1..16
-  phase: string;
+  n: number; // 1-based position within the course
   title: string;
-  takeaway: string;
-  tools: string;
+  covers: string; // what the session covers
   durationMin: number;
+  advanced?: boolean; // Achiever-only sessions beyond the shared eight
 }
 
 export interface Track {
@@ -16,10 +15,5 @@ export interface Track {
   audience: string;
   tagline: string;
   accent: string; // CSS background for the thumbnail
-  sessions: Session[];
-}
-
-export interface Phase {
-  name: string;
   sessions: Session[];
 }

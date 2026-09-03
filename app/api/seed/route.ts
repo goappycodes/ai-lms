@@ -1,5 +1,5 @@
 import { ok, serverError } from "@/lib/api";
-import { tracks, getPhases } from "@/lib/data";
+import { tracks } from "@/lib/data";
 import {
   createChapter,
   createCourse,
@@ -33,16 +33,15 @@ export async function POST() {
         signature_name: "Principal",
         signature_title: `${track.name} Track`,
       });
-      for (const phase of getPhases(track)) {
-        const chapter = await createChapter(course.id, phase.name);
-        for (const s of phase.sessions) {
-          await createLesson(chapter.id, {
-            title: s.title,
-            takeaway: s.takeaway,
-            tools: s.tools,
-            durationMin: s.durationMin,
-          });
-        }
+      // The curriculum is a flat list of sessions, so each course gets one
+      // chapter holding them in order.
+      const chapter = await createChapter(course.id, "Sessions");
+      for (const s of track.sessions) {
+        await createLesson(chapter.id, {
+          title: s.title,
+          takeaway: s.covers,
+          durationMin: s.durationMin,
+        });
       }
       created.push(course.slug);
     }

@@ -670,33 +670,12 @@ a {
 .curriculum-head .muted {
   font-size: 12px;
 }
-.phase-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 24px;
-}
-.phase {
-  border-bottom: 1px solid var(--border);
-}
-.phase:last-child {
-  border-bottom: 0;
-}
-.phase-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 16px 24px 6px;
-}
 .phase-index {
   font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--crimson);
-}
-.phase-name {
-  font-size: 13px;
-  font-weight: 700;
 }
 .session-list {
   list-style: none;
