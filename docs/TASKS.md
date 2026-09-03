@@ -77,7 +77,7 @@ Environments exist. Nothing here depends on anything.
 | P1-10 | Delete all quiz code — repo functions, `QuizPanel`, API route, zod schema, CSS | ✅ | [PR #1](https://github.com/goappycodes/ai-lms/pull/1). 317 lines out. Also removed a query from `getCourseTree` |
 | P1-12 | Replace `lib/data.ts` with the real 6 / 8 / 10 curriculum | ✅ | [PR #2](https://github.com/goappycodes/ai-lms/pull/2). 16 unique lessons → 96 assets confirmed |
 | P1-01 | Write the target schema spec — every table, column, relationship | ✅ | [PR #3](https://github.com/goappycodes/ai-lms/pull/3) · [SCHEMA.md](./SCHEMA.md). 19 tables + 1 view. **Needs review before P1-02** |
-| P0-06 | Stand up the staging / demo deployment | ⬜ | Needed by `P2-07` |
+| P0-06 | Stand up the staging / demo deployment | ✅ | https://ai-lms-xi.vercel.app · verified live. **DB not connected — see blockers** |
 | P0-08 | Point a custom domain at the R2 bucket | ⬜ | **Start today** — DNS propagation is not instant |
 | P0-07 | Create the Sentry and Firebase projects, collect keys | ⬜ | — |
 | P6-01 | Wire Sentry, client and server | ⬜ | Useful from day one, not day thirteen |
@@ -397,7 +397,7 @@ Add a row the moment something stops. Empty is good; stale is not.
 
 | Date | Task | Blocker | Owner | Needed by | Cleared |
 | --- | --- | --- | --- | --- | --- |
-| | | | | | |
+| Sep 3 | P1-15 | Staging cannot reach Supabase — pooler returns `tenant/user postgres.mpdtcinhyygmcrntocwn not found`. Likely a paused project or a project-ref mismatch between `SUPABASE_DB_USER` and the host | | Sep 5 | ⬜ |
 
 ---
 
