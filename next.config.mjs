@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -42,7 +42,8 @@ export default withSentryConfig(nextConfig, {
   // Strip the source maps from the deployed bundle after upload, so they are
   // not downloadable by students.
   widenClientFileUpload: false,
-  disableLogger: true,
+  // Strips Sentry's own debug logging from the browser bundle.
+  webpack: { treeshake: { removeDebugLogging: true } },
   // Proxy Sentry's ingest through our own domain so ad blockers, which many
   // school networks run, do not silently drop every error report.
   tunnelRoute: "/monitoring",

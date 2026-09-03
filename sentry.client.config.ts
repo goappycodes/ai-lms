@@ -5,6 +5,11 @@
 // children — names, school, class — which is not something we should be
 // shipping to a third party. And it is the heaviest part of the SDK, on a
 // product whose users are on prepaid mobile data (D-11).
+//
+// The SDK warns that this file should become `instrumentation-client.ts`.
+// That file is only loaded by Next 15.3+; we are on 14.2, where renaming it
+// would silently stop client-side Sentry from initialising at all. Move it
+// when we upgrade Next, not before.
 import * as Sentry from "@sentry/nextjs";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
