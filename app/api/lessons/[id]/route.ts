@@ -1,5 +1,5 @@
 import { notFound, ok, parseBody, serverError } from "@/lib/api";
-import { deleteLesson, getLatestVideo, getLesson, getQuiz, listPdfs, updateLesson } from "@/lib/db/repo";
+import { deleteLesson, getLatestVideo, getLesson, listPdfs, updateLesson } from "@/lib/db/repo";
 import { lessonUpdate } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -13,7 +13,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       ...lesson,
       video: (await getLatestVideo(params.id)) ?? null,
       pdfs: await listPdfs(params.id),
-      quiz: (await getQuiz(params.id)) ?? null,
     });
   } catch (e) {
     return serverError(e);

@@ -31,7 +31,7 @@ export default async function StudioHome() {
           <div>
             <Link href="/admin" className="crumb">← Admin</Link>
             <h1>Content Studio</h1>
-            <p className="muted">Author courses, chapters, videos, PDFs, quizzes and certificates.</p>
+            <p className="muted">Author courses, chapters, videos, PDFs and certificates.</p>
           </div>
           <NewCourseForm />
         </div>

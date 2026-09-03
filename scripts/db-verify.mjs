@@ -24,7 +24,7 @@ const c = new pg.Client({
   ssl: { rejectUnauthorized: false },
 });
 await c.connect();
-for (const t of ["courses", "chapters", "lessons", "videos", "pdfs", "quizzes", "quiz_questions", "certificates"]) {
+for (const t of ["courses", "chapters", "lessons", "videos", "pdfs", "certificates"]) {
   const r = await c.query(`select count(*)::int n from ${t}`);
   console.log(t.padEnd(16), r.rows[0].n);
 }
