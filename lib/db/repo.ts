@@ -76,22 +76,6 @@ export interface Pdf {
   position: number;
   created_at: string;
 }
-export interface Quiz {
-  id: string;
-  lesson_id: string;
-  title: string;
-  pass_pct: number;
-  created_at: string;
-  updated_at: string;
-}
-export interface QuizQuestion {
-  id: string;
-  quiz_id: string;
-  prompt: string;
-  options: string;
-  correct_index: number;
-  position: number;
-}
 export interface Certificate {
   id: string;
   course_id: string;
@@ -288,50 +272,6 @@ export async function deletePdf(pid: string): Promise<boolean> {
   return (await run("DELETE FROM pdfs WHERE id = $1", [pid])) > 0;
 }
 
-// -------------------------------------------------------------- quizzes ----
-export async function upsertQuiz(
-  lessonId: string,
-  input: { title?: string; passPct?: number; questions: { prompt: string; options: string[]; correctIndex: number }[] }
-): Promise<{ quiz: Quiz; questions: QuizQuestion[] }> {
-  const now = nowIso();
-  let quiz = await one<Quiz>("SELECT * FROM quizzes WHERE lesson_id = $1", [lessonId]);
-  if (!quiz) {
-    const qid = id("qz");
-    await run(
-      `INSERT INTO quizzes (id, lesson_id, title, pass_pct, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6)`,
-      [qid, lessonId, input.title ?? "Quiz", input.passPct ?? 70, now, now]
-    );
-    quiz = (await one<Quiz>("SELECT * FROM quizzes WHERE id = $1", [qid]))!;
-  } else {
-    await run("UPDATE quizzes SET title=$1, pass_pct=$2, updated_at=$3 WHERE id=$4", [
-      input.title ?? quiz.title,
-      input.passPct ?? quiz.pass_pct,
-      now,
-      quiz.id,
-    ]);
-  }
-  await run("DELETE FROM quiz_questions WHERE quiz_id = $1", [quiz.id]);
-  for (let i = 0; i < input.questions.length; i++) {
-    const q = input.questions[i];
-    await run(
-      `INSERT INTO quiz_questions (id, quiz_id, prompt, options, correct_index, position) VALUES ($1,$2,$3,$4,$5,$6)`,
-      [id("qq"), quiz.id, q.prompt, JSON.stringify(q.options), q.correctIndex, i]
-    );
-  }
-  return { quiz: (await one<Quiz>("SELECT * FROM quizzes WHERE id = $1", [quiz.id]))!, questions: await listQuestions(quiz.id) };
-}
-export async function getQuiz(lessonId: string): Promise<{ quiz: Quiz; questions: QuizQuestion[] } | undefined> {
-  const quiz = await one<Quiz>("SELECT * FROM quizzes WHERE lesson_id = $1", [lessonId]);
-  if (!quiz) return undefined;
-  return { quiz, questions: await listQuestions(quiz.id) };
-}
-function listQuestions(quizId: string): Promise<QuizQuestion[]> {
-  return all<QuizQuestion>("SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY position", [quizId]);
-}
-export async function deleteQuiz(lessonId: string): Promise<boolean> {
-  return (await run("DELETE FROM quizzes WHERE lesson_id = $1", [lessonId])) > 0;
-}
-
 // --------------------------------------------------------- certificates ----
 export async function upsertCertificate(
   courseId: string,
@@ -367,7 +307,6 @@ export function getCertificate(courseId: string): Promise<Certificate | undefine
 export interface LessonNode extends Lesson {
   video: Video | null;
   pdfs: Pdf[];
-  quizCount: number;
 }
 export interface ChapterNode extends Chapter {
   lessons: LessonNode[];
@@ -403,32 +342,23 @@ export async function getCourseTree(courseId: string): Promise<CourseTree | unde
   const lessonIds = lessons.map((l) => l.id);
   let videos: Video[] = [];
   let pdfs: Pdf[] = [];
-  let quizCounts: { lesson_id: string; n: number }[] = [];
   if (lessonIds.length) {
-    [videos, pdfs, quizCounts] = await Promise.all([
+    [videos, pdfs] = await Promise.all([
       all<Video>(
         "SELECT DISTINCT ON (lesson_id) * FROM videos WHERE lesson_id = ANY($1::text[]) ORDER BY lesson_id, created_at DESC",
         [lessonIds]
       ),
       all<Pdf>("SELECT * FROM pdfs WHERE lesson_id = ANY($1::text[]) ORDER BY position, created_at", [lessonIds]),
-      all<{ lesson_id: string; n: number }>(
-        `SELECT q.lesson_id, count(qq.id)::int AS n
-         FROM quizzes q LEFT JOIN quiz_questions qq ON qq.quiz_id = q.id
-         WHERE q.lesson_id = ANY($1::text[]) GROUP BY q.lesson_id`,
-        [lessonIds]
-      ),
     ]);
   }
 
   const videoByLesson = new Map(videos.map((v) => [v.lesson_id, v]));
   const pdfsByLesson = groupBy(pdfs, (p) => p.lesson_id);
-  const quizCountByLesson = new Map(quizCounts.map((q) => [q.lesson_id, q.n]));
 
   const lessonNodes: LessonNode[] = lessons.map((ls) => ({
     ...ls,
     video: videoByLesson.get(ls.id) ?? null,
     pdfs: pdfsByLesson.get(ls.id) ?? [],
-    quizCount: quizCountByLesson.get(ls.id) ?? 0,
   }));
   const lessonsByChapter = groupBy(lessonNodes, (l) => l.chapter_id);
 

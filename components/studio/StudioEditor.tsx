@@ -23,7 +23,6 @@ type Lesson = {
   duration_min: number;
   video: Video;
   pdfs: Pdf[];
-  quizCount: number;
 };
 type Chapter = { id: string; title: string; lessons: Lesson[] };
 type Cert = {
@@ -80,105 +79,6 @@ function VideoState({ v, job }: { v: Video; job?: { progress: number; stage: str
   return <span className="vstatus working">{v.stage || v.status}</span>;
 }
 
-// --- Quiz panel -------------------------------------------------------------
-type QQ = { prompt: string; options: string[]; correctIndex: number };
-function QuizPanel({ lessonId, onSaved }: { lessonId: string; onSaved: () => void }) {
-  const [questions, setQuestions] = useState<QQ[]>([]);
-  const [passPct, setPassPct] = useState(70);
-  const [loaded, setLoaded] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    api(`/api/lessons/${lessonId}/quiz`).then((q) => {
-      if (q) {
-        setPassPct(q.pass_pct);
-        setQuestions(q.questions.map((x: { prompt: string; options: string[]; correct_index: number }) => ({ prompt: x.prompt, options: x.options, correctIndex: x.correct_index })));
-      }
-      setLoaded(true);
-    });
-  }, [lessonId]);
-
-  function addQ() {
-    setQuestions((qs) => [...qs, { prompt: "", options: ["", ""], correctIndex: 0 }]);
-  }
-  function update(i: number, patch: Partial<QQ>) {
-    setQuestions((qs) => qs.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
-  }
-  async function save() {
-    setBusy(true);
-    setErr(null);
-    try {
-      await api(`/api/lessons/${lessonId}/quiz`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passPct, questions }),
-      });
-      onSaved();
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!loaded)
-    return (
-      <div className="quiz-editor">
-        <Skeleton w={140} h={14} style={{ marginBottom: 10 }} />
-        <Skeleton w="100%" h={44} r={10} style={{ marginBottom: 8 }} />
-        <Skeleton w="100%" h={44} r={10} />
-      </div>
-    );
-  return (
-    <div className="quiz-editor">
-      <div className="quiz-top">
-        <label className="inline-field">
-          Pass %
-          <input type="number" min={0} max={100} value={passPct} onChange={(e) => setPassPct(Number(e.target.value))} />
-        </label>
-        <button className="btn btn-small btn-ghost" onClick={addQ}>+ Question</button>
-      </div>
-      {questions.map((q, i) => (
-        <div key={i} className="q-row">
-          <input
-            className="q-prompt"
-            placeholder={`Question ${i + 1}`}
-            value={q.prompt}
-            onChange={(e) => update(i, { prompt: e.target.value })}
-          />
-          {q.options.map((opt, oi) => (
-            <label key={oi} className="opt-row">
-              <input
-                type="radio"
-                name={`correct-${i}`}
-                checked={q.correctIndex === oi}
-                onChange={() => update(i, { correctIndex: oi })}
-              />
-              <input
-                placeholder={`Option ${oi + 1}`}
-                value={opt}
-                onChange={(e) => update(i, { options: q.options.map((o, x) => (x === oi ? e.target.value : o)) })}
-              />
-              {q.options.length > 2 && (
-                <button className="x" onClick={() => update(i, { options: q.options.filter((_, x) => x !== oi), correctIndex: 0 })}>×</button>
-              )}
-            </label>
-          ))}
-          <div className="q-actions">
-            <button className="btn btn-small btn-ghost" onClick={() => update(i, { options: [...q.options, ""] })}>+ Option</button>
-            <button className="btn btn-small btn-ghost" onClick={() => setQuestions((qs) => qs.filter((_, x) => x !== i))}>Remove question</button>
-          </div>
-        </div>
-      ))}
-      {err && <p className="form-err">{err}</p>}
-      <button className="btn btn-primary btn-small" onClick={save} disabled={busy || questions.length === 0}>
-        {busy ? "Saving…" : `Save quiz (${questions.length})`}
-      </button>
-    </div>
-  );
-}
-
 // --- Certificate panel ------------------------------------------------------
 function CertPanel({ courseId, cert, onSaved }: { courseId: string; cert: Cert; onSaved: () => void }) {
   const [title, setTitle] = useState(cert?.title ?? "Certificate of Completion");
@@ -232,7 +132,6 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
   const [chapterTitle, setChapterTitle] = useState("");
   const [lessonTitle, setLessonTitle] = useState<Record<string, string>>({});
   const [jobs, setJobs] = useState<Record<string, { progress: number; stage: string; status: string }>>({});
-  const [openQuiz, setOpenQuiz] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(0);
   const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
@@ -415,12 +314,6 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
                     onChange={(e) => e.target.files?.[0] && uploadPdf(ls.id, e.target.files[0])}
                   />
                 </label>
-                <button
-                  className="btn btn-small btn-ghost"
-                  onClick={() => setOpenQuiz(openQuiz === ls.id ? null : ls.id)}
-                >
-                  Quiz {ls.quizCount ? `(${ls.quizCount})` : ""}
-                </button>
                 <button className="btn btn-small btn-ghost danger" onClick={() => delLesson(ls.id)}>Delete</button>
               </div>
 
@@ -434,8 +327,6 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
                   ))}
                 </div>
               )}
-
-              {openQuiz === ls.id && <QuizPanel lessonId={ls.id} onSaved={reload} />}
             </div>
           ))}
 
