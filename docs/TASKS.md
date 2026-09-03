@@ -123,7 +123,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | P1-11 | Rewrite `lib/db/repo.ts` against the new schema | ⬜ | Keep the batched `getCourseTree` approach |
 | P1-13 | Update `/api/seed` for the new curriculum and shared lessons | ⬜ | Must stay idempotent |
 | P1-14 | Update `db-setup.mjs` and `db-verify.mjs` | ⬜ | — |
-| P1-15 | **Run the migration on staging and verify** | ⬜ | 🏁 Milestone |
+| P1-15 | **Run the migration on staging and verify** | ⬜ | 🏁 Milestone. DB reachable from local; Vercel vars pending |
 | P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08`. Enable Smart Tiered Cache — the classroom multiplier |
 | P6-14 | Cloudflare Worker in front of the bucket, validating access | ⬜ | `D-17`. Bucket stops being public |
 | P2-01 | Password hashing helpers | ⬜ | First new dependency — record why |
@@ -398,7 +398,7 @@ Add a row the moment something stops. Empty is good; stale is not.
 | Date | Task | Blocker | Owner | Needed by | Cleared |
 | --- | --- | --- | --- | --- | --- |
 | Sep 3 | P0-07 | Sentry auth token was pasted into a chat transcript — rotate it and update Vercel | | Sep 4 | ⬜ |
-| Sep 3 | P1-15 | Staging cannot reach Supabase — pooler returns `tenant/user postgres.mpdtcinhyygmcrntocwn not found`. Likely a paused project or a project-ref mismatch between `SUPABASE_DB_USER` and the host | | Sep 5 | ⬜ |
+| Sep 3 | P1-15 | ~~Staging cannot reach Supabase~~ — root cause was a stale project ref. New project `nxvehgwbrnkxeasnmcyg` in **Mumbai** (`ap-south-1`), verified from local: 52 ms median round trip, down from 147 ms in Tokyo. **Vercel env vars still need updating (port 6543)** | | Sep 5 | 🟨 |
 
 ---
 
