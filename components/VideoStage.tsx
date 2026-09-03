@@ -35,7 +35,7 @@ export default function VideoStage({
         )}
 
         <div className="video-overlay">
-          <span className="badge">Phase · {session.phase}</span>
+          <span className="badge">{session.advanced ? "Advanced" : track.name}</span>
           <h1>
             {session.n}. {session.title}
           </h1>
