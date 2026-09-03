@@ -74,7 +74,7 @@ Environments exist. Nothing here depends on anything.
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P1-10 | Delete all quiz code — repo functions, `QuizPanel`, API route, zod schema, CSS | ⬜ | 8 files reference it; no student screen does. `D-02` |
+| P1-10 | Delete all quiz code — repo functions, `QuizPanel`, API route, zod schema, CSS | ✅ | [PR #1](https://github.com/goappycodes/ai-lms/pull/1). 317 lines out. Also removed a query from `getCourseTree` |
 | P1-12 | Replace `lib/data.ts` with the real 6 / 8 / 10 curriculum | ⬜ | `D-01`. Ends the 16×3 fiction |
 | P1-01 | Write the target schema spec — every table, column, relationship | ⬜ | Review this before writing a single migration |
 | P0-06 | Stand up the staging / demo deployment | ⬜ | Needed by `P2-07` |
