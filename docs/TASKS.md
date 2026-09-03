@@ -78,7 +78,7 @@ Environments exist. Nothing here depends on anything.
 | P1-12 | Replace `lib/data.ts` with the real 6 / 8 / 10 curriculum | ✅ | [PR #2](https://github.com/goappycodes/ai-lms/pull/2). 16 unique lessons → 96 assets confirmed |
 | P1-01 | Write the target schema spec — every table, column, relationship | ✅ | [PR #3](https://github.com/goappycodes/ai-lms/pull/3) · [SCHEMA.md](./SCHEMA.md). 19 tables + 1 view. **Needs review before P1-02** |
 | P0-06 | Stand up the staging / demo deployment | ✅ | https://ai-lms-xi.vercel.app · verified live. **DB not connected — see blockers** |
-| P0-08 | Point a custom domain at the R2 bucket | ⬜ | **Start today** — DNS propagation is not instant |
+| P0-08 | Point a custom domain at the R2 bucket | ⬜ | Deferred by owner. Needs a domain on Cloudflare DNS. Only code change is `R2_PUBLIC_URL`; schema now stores keys not URLs ([PR #5](https://github.com/goappycodes/ai-lms/pull/5)) |
 | P0-07 | Create the Sentry and Firebase projects, collect keys | ⬜ | — |
 | P6-01 | Wire Sentry, client and server | ⬜ | Useful from day one, not day thirteen |
 | P0-09 | Agree branch, PR and environment workflow | ⬜ | Matters more with several people and no slack |
@@ -102,7 +102,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | --- | --- | --- | --- |
 | P1-02 | Auth tables — `users`, `sessions`, `password_resets`, `audit_log` | ⬜ | One `users` table with a role — `D-14` |
 | P1-03 | Org tables — `schools`, `classes`, `class_teachers`, `enrolments` | ⬜ | School row joins to its `role = school` user |
-| P1-04 | `assets` table with `kind` and `locale`, referenced by lessons | ⬜ | Brief §3. Replaces lesson-owned `pdfs` / `videos` |
+| P1-04 | `videos` + `documents` with `kind`, `locale` and `storage_key` | ⬜ | Brief §3 · [SCHEMA.md](./SCHEMA.md). Keys not URLs — [PR #5](https://github.com/goappycodes/ai-lms/pull/5) |
 | P1-05 | Let a lesson belong to more than one course | ⬜ | Builder ↔ Achiever share 8 sessions — `D-01` |
 | P1-06 | `lesson_progress` — position, furthest, completed_at, completed_via | ⬜ | `D-07` |
 | P1-07 | `certificates_issued` with a verification id | ⬜ | Separate from the template table |
@@ -124,7 +124,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | P1-13 | Update `/api/seed` for the new curriculum and shared lessons | ⬜ | Must stay idempotent |
 | P1-14 | Update `db-setup.mjs` and `db-verify.mjs` | ⬜ | — |
 | P1-15 | **Run the migration on staging and verify** | ⬜ | 🏁 Milestone |
-| P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08` |
+| P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08`. Enable Smart Tiered Cache — the classroom multiplier |
 | P6-14 | Cloudflare Worker in front of the bucket, validating access | ⬜ | `D-17`. Bucket stops being public |
 | P2-01 | Password hashing helpers | ⬜ | First new dependency — record why |
 
