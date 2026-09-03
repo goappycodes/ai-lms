@@ -79,8 +79,8 @@ Environments exist. Nothing here depends on anything.
 | P1-01 | Write the target schema spec — every table, column, relationship | ✅ | [PR #3](https://github.com/goappycodes/ai-lms/pull/3) · [SCHEMA.md](./SCHEMA.md). 19 tables + 1 view. **Needs review before P1-02** |
 | P0-06 | Stand up the staging / demo deployment | ✅ | https://ai-lms-xi.vercel.app · verified live. **DB not connected — see blockers** |
 | P0-08 | Point a custom domain at the R2 bucket | ⬜ | Deferred by owner. Needs a domain on Cloudflare DNS. Only code change is `R2_PUBLIC_URL`; schema now stores keys not URLs ([PR #5](https://github.com/goappycodes/ai-lms/pull/5)) |
-| P0-07 | Create the Sentry and Firebase projects, collect keys | ⬜ | — |
-| P6-01 | Wire Sentry, client and server | ⬜ | Useful from day one, not day thirteen |
+| P0-07 | Create the Sentry and Firebase projects, collect keys | ✅ | Sentry `the-starks/ai-veda-lms` (EU region) · Firebase `ai-veda-lms`. **Still to do: set the same vars in Vercel, and rotate the auth token** |
+| P6-01 | Wire Sentry, client and server | ✅ | [PR #6](https://github.com/goappycodes/ai-lms/pull/6). Errors only, no Replay. +31.7 kB after tree-shaking tracing |
 | P0-09 | Agree branch, PR and environment workflow | ⬜ | Matters more with several people and no slack |
 | P0-01 | ✅ `Q1` answered — separate video per language | ✅ | Content production is unblocked |
 | P0-02 | ✅ `Q2` answered — video URLs must be protected | ✅ | Adds `P6-13`…`P6-16` |
@@ -397,6 +397,7 @@ Add a row the moment something stops. Empty is good; stale is not.
 
 | Date | Task | Blocker | Owner | Needed by | Cleared |
 | --- | --- | --- | --- | --- | --- |
+| Sep 3 | P0-07 | Sentry auth token was pasted into a chat transcript — rotate it and update Vercel | | Sep 4 | ⬜ |
 | Sep 3 | P1-15 | Staging cannot reach Supabase — pooler returns `tenant/user postgres.mpdtcinhyygmcrntocwn not found`. Likely a paused project or a project-ref mismatch between `SUPABASE_DB_USER` and the host | | Sep 5 | ⬜ |
 
 ---
