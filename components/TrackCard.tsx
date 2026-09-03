@@ -34,7 +34,9 @@ export default function TrackCard({ track, enrolled }: { track: Track; enrolled:
         ) : (
           <>
             <div className="track-meta">
-              <span>{total} sessions · 6 phases</span>
+              <span>
+                {total} sessions · {track.audience}
+              </span>
               <span className="pill draft">Not enrolled</span>
             </div>
             <Link className="btn btn-ghost" href={`/learn/${track.id}`}>
