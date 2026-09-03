@@ -100,14 +100,14 @@ content is loaded — doing it later means data migration instead of schema defi
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P1-02 | Auth tables — `users`, `sessions`, `password_resets`, `audit_log` | ⬜ | One `users` table with a role — `D-14` |
-| P1-03 | Org tables — `schools`, `classes`, `class_teachers`, `enrolments` | ⬜ | School row joins to its `role = school` user |
-| P1-04 | `videos` + `documents` with `kind`, `locale` and `storage_key` | ⬜ | Brief §3 · [SCHEMA.md](./SCHEMA.md). Keys not URLs — [PR #5](https://github.com/goappycodes/ai-lms/pull/5) |
-| P1-05 | Let a lesson belong to more than one course | ⬜ | Builder ↔ Achiever share 8 sessions — `D-01` |
-| P1-06 | `lesson_progress` — position, furthest, completed_at, completed_via | ⬜ | `D-07` |
-| P1-07 | `certificates_issued` with a verification id | ⬜ | Separate from the template table |
-| P1-08 | `encode_jobs` table | ⬜ | Retires the in-memory `Set` — `D-06` |
-| P1-09 | Drop `quizzes` and `quiz_questions` | ⬜ | `D-02` |
+| P1-02 | Auth tables — `users`, `sessions`, `password_resets`, `audit_log` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0002_auth.sql`. Check constraints verified by smoke test |
+| P1-03 | Org tables — `schools`, `classes`, `class_teachers` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0003_org.sql`. Deferrable FKs handle the school↔login cycle |
+| P1-04 | `videos` + `documents` with `kind`, `locale` and `storage_key` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0005_assets.sql` + `lesson_assets` view |
+| P1-05 | Let a lesson belong to more than one course | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0004_content.sql`. One lesson row in two courses, proven |
+| P1-06 | `lesson_progress` — position, furthest, completed_at, completed_via | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0006_progress.sql`. Keyed on (user, course, lesson) |
+| P1-07 | `certificates_issued` with a verification id | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0007_certificates.sql` |
+| P1-08 | `encode_jobs` table | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0008_encode_jobs.sql`. One live job per video |
+| P1-09 | Drop `quizzes` and `quiz_questions` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0001_drop_legacy.sql`. Also chapters and the old pdfs/certificates |
 | P6-05 | Make VOD playlists immutable | ⬜ | One line. Saves a round trip on every single play |
 
 **End of day:** ________________________________________________
@@ -122,7 +122,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | --- | --- | --- | --- |
 | P1-11 | Rewrite `lib/db/repo.ts` against the new schema | ⬜ | Keep the batched `getCourseTree` approach |
 | P1-13 | Update `/api/seed` for the new curriculum and shared lessons | ⬜ | Must stay idempotent |
-| P1-14 | Update `db-setup.mjs` and `db-verify.mjs` | ⬜ | — |
+| P1-14 | Update `db-setup.mjs` and `db-verify.mjs` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9). `db-setup` replaced by `db:migrate`; `db-verify` now reads the catalogue |
 | P1-15 | **Run the migration on staging and verify** | ⬜ | 🏁 Milestone |
 | P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08`. Enable Smart Tiered Cache — the classroom multiplier |
 | P6-14 | Cloudflare Worker in front of the bucket, validating access | ⬜ | `D-17`. Bucket stops being public |
