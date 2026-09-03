@@ -32,9 +32,14 @@ Enter every value **raw** — Vercel does not do `$` expansion, so no `\$` escap
 - `SUPABASE_DB_PASSWORD` = *(raw DB password, real `$`, no backslash)*
 - `SUPABASE_DB_NAME` = `postgres`
 - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`
-- (optional) `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 
 > Env changes only apply to **new** deployments — Redeploy after editing.
+
+**Supabase is a Postgres host and nothing more.** No Supabase Auth, Storage,
+Realtime or PostgREST — the app talks to the database with the `pg` driver over a
+plain connection. Authentication is the Postgres role in `SUPABASE_DB_USER`;
+authorisation is enforced in the application, not by Row Level Security. Moving to
+another Postgres later changes these five values and no code.
 
 ## Local encoder (video ingestion)
 
