@@ -303,8 +303,8 @@ the single-query slot grid the Studio needs (`P5-13`) without that cost.
 | `progress` | `real` NOT NULL | 0–1 |
 | `stage` | `text` NULL | Human-readable step |
 | `storage` | `text` NULL | `r2` · `local` |
-| `master_url` | `text` NULL | HLS master playlist |
-| `poster_url` | `text` NULL | |
+| `storage_key` | `text` NULL | Key **prefix**, e.g. `hls/vid_abc123`. Not a URL — see below |
+| `has_poster` | `boolean` NOT NULL | Poster generation can fail without failing the encode |
 | `renditions` | `text[]` NULL | Was a JSON string; a real array now |
 | `duration_sec` | `real` NULL | Measured at encode. Drives the 90% completion rule |
 | `error` | `text` NULL | |
@@ -317,6 +317,29 @@ Today's code takes the newest row of any status, which means a failed re-encode 
 working video with a broken one. Selecting the newest *ready* row means a bad re-encode is
 visible in the Studio and invisible to students.
 
+#### Keys, not URLs
+
+Today the pipeline builds an absolute URL at encode time and stores it:
+
+```
+master_url = "https://pub-abc123.r2.dev/hls/vid_xyz/master.m3u8"
+```
+
+The delivery domain is therefore baked into every row, and changing it becomes a data
+migration across the whole table. That is about to matter twice in ten days: `P0-08` moves
+delivery to a custom domain, and `P6-14` puts a Worker in front of the bucket (`D-17`), which
+may change the URL shape again.
+
+So the table stores the **key** and the application builds the URL when it reads:
+
+| Storage | URL |
+| --- | --- |
+| `r2` | `${R2_PUBLIC_URL}/${storage_key}/master.m3u8` |
+| `local` | `/${storage_key}/master.m3u8` |
+
+The delivery domain becomes configuration rather than data — one environment variable, no
+UPDATE. `has_poster` replaces the nullable `poster_url` that used to carry the same signal.
+
 ### `documents`
 
 | Column | Type | Notes |
@@ -326,14 +349,17 @@ visible in the Studio and invisible to students.
 | `kind` | `text` NOT NULL | `worksheet` · `handout` |
 | `locale` | `text` NOT NULL | |
 | `title` | `text` NOT NULL | |
-| `filename` | `text` NOT NULL | |
-| `url` | `text` NOT NULL | |
-| `storage` | `text` NOT NULL | |
+| `filename` | `text` NOT NULL | Original upload name, for display |
+| `storage_key` | `text` NOT NULL | Full object key, e.g. `pdfs/file_abc123.pdf` |
+| `storage` | `text` NOT NULL | `r2` · `local` |
 | `size_bytes` | `integer` NULL | |
 | `created_at` | `timestamptz` NOT NULL | |
 
 **Unique** `(lesson_id, kind, locale)` — exactly one worksheet and one handout per language
 per lesson. Re-upload replaces.
+
+Same rule as videos: the key is stored, the URL is built on read. PDFs are served from the
+same bucket and will sit behind the same domain and Worker.
 
 ### `lesson_assets` (view)
 
@@ -491,6 +517,7 @@ unmatched rows rejected (`D-15`).
 | ISO text timestamps | `timestamptz` | Date arithmetic |
 | `INTEGER` booleans | `boolean` | Correctness |
 | `renditions` JSON string | `text[]` | Stop parsing JSON in the app |
+| absolute `master_url` / `url` | `storage_key` + build on read | Delivery domain becomes config, not data — needed by `P0-08` and `D-17` |
 | titles on the row | translation tables | Bilingual |
 
 **Existing data.** The current Supabase database holds seeded demo content only. The migration
