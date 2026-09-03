@@ -1,18 +1,37 @@
 import { notFound, ok, parseBody, serverError } from "@/lib/api";
-import { deleteLesson, getLatestVideo, getLesson, listPdfs, updateLesson } from "@/lib/db/repo";
+import {
+  LOCALES,
+  deleteLesson,
+  getLatestVideo,
+  getLesson,
+  listDocuments,
+  listLessonTranslations,
+  coursesUsingLesson,
+  updateLesson,
+} from "@/lib/db/repo";
 import { lessonUpdate } from "@/lib/validation";
+import { localeFrom } from "@/lib/locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const lesson = await getLesson(params.id);
+    const locale = localeFrom(req);
+    const lesson = await getLesson(params.id, undefined, locale);
     if (!lesson) return notFound("lesson not found");
+
+    // Every language's video, so the Studio can render the slot grid rather
+    // than only the language it happens to be viewing in.
+    const videos = Object.fromEntries(
+      await Promise.all(LOCALES.map(async (l) => [l, (await getLatestVideo(params.id, l)) ?? null]))
+    );
     return ok({
       ...lesson,
-      video: (await getLatestVideo(params.id)) ?? null,
-      pdfs: await listPdfs(params.id),
+      videos,
+      documents: await listDocuments(params.id),
+      translations: await listLessonTranslations(params.id),
+      courses: await coursesUsingLesson(params.id),
     });
   } catch (e) {
     return serverError(e);
@@ -24,8 +43,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const parsed = await parseBody(req, lessonUpdate);
     if ("error" in parsed) return parsed.error;
     const { durationMin, ...rest } = parsed.data;
-    const patch = { ...rest, ...(durationMin !== undefined ? { duration_min: durationMin } : {}) };
-    const updated = await updateLesson(params.id, patch as never);
+    const updated = await updateLesson(params.id, {
+      ...rest,
+      ...(durationMin !== undefined ? { duration_min: durationMin } : {}),
+      locale: localeFrom(req),
+    });
     return updated ? ok(updated) : notFound("lesson not found");
   } catch (e) {
     return serverError(e);
@@ -36,6 +58,14 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   try {
     return (await deleteLesson(params.id)) ? ok({ deleted: true }) : notFound("lesson not found");
   } catch (e) {
+    // The schema refuses to delete a lesson a course still uses — it may be
+    // shared, and the person deleting is probably looking at only one course.
+    if (e instanceof Error && /foreign key|violates/i.test(e.message)) {
+      return Response.json(
+        { error: "This lesson is still used by a course. Remove it from the course first." },
+        { status: 409 }
+      );
+    }
     return serverError(e);
   }
 }

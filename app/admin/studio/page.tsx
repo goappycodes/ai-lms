@@ -14,11 +14,7 @@ export default async function StudioHome() {
 
   let cards;
   try {
-    cards = (await listCoursesWithCounts()).map((c) => ({
-      course: c,
-      chapterCount: c.chapter_count,
-      lessonCount: c.lesson_count,
-    }));
+    cards = await listCoursesWithCounts();
   } catch (e) {
     return <ConfigNotice detail={e instanceof Error ? e.message : String(e)} />;
   }
@@ -31,7 +27,7 @@ export default async function StudioHome() {
           <div>
             <Link href="/admin" className="crumb">← Admin</Link>
             <h1>Content Studio</h1>
-            <p className="muted">Author courses, chapters, videos, PDFs and certificates.</p>
+            <p className="muted">Author courses, lessons, videos, worksheets and handouts.</p>
           </div>
           <NewCourseForm />
         </div>
@@ -39,7 +35,7 @@ export default async function StudioHome() {
         {cards.length === 0 ? (
           <div className="panel center">
             <h2>No courses yet</h2>
-            <p className="muted">Create one, or import the three-track AI Veda curriculum to get started.</p>
+            <p className="muted">Create one, or import the three-course AI Veda curriculum to get started.</p>
             <div style={{ marginTop: 16 }}>
               <SeedButton />
             </div>
@@ -47,7 +43,7 @@ export default async function StudioHome() {
         ) : (
           <>
             <div className="studio-grid">
-              {cards.map(({ course: c, chapterCount, lessonCount }) => (
+              {cards.map((c) => (
                 <Link key={c.id} href={`/admin/studio/${c.id}`} className="studio-card">
                   <div className="studio-card-top" style={{ background: c.accent || "var(--ink-nav)" }}>
                     <span>{c.title}</span>
@@ -57,7 +53,9 @@ export default async function StudioHome() {
                     <p className="muted">{c.subtitle}</p>
                     <div className="studio-card-meta">
                       <span>{c.audience}</span>
-                      <span>{chapterCount} ch · {lessonCount} lessons</span>
+                      <span>
+                        {c.lesson_count} lessons · {c.assets_filled}/{c.lesson_count * 6} assets
+                      </span>
                     </div>
                   </div>
                 </Link>

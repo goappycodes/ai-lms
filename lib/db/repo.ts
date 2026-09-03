@@ -1,7 +1,17 @@
 import { getPool } from "./pg";
-import { id, nowIso, slugify } from "@/lib/ids";
+import { id, slugify } from "@/lib/ids";
+import { assetUrl } from "@/lib/storage";
 
-// Thin typed helpers over the pg pool. All repo functions are async.
+// Typed helpers over the pg pool. All repo functions are async.
+//
+// Two conventions the new schema introduces, both load-bearing:
+//
+//   Locale. Titles live in *_translations, never on the row. Every read takes a
+//   locale and falls back to English when a Malayalam row is missing, so a
+//   half-translated course renders instead of throwing.
+//
+//   Keys, not URLs. Assets store a storage_key; the delivery URL is built on
+//   read from R2_PUBLIC_URL. The domain is configuration, not data.
 async function all<T>(sql: string, params: unknown[] = []): Promise<T[]> {
   const { rows } = await getPool().query(sql, params);
   return rows as T[];
@@ -15,91 +25,102 @@ async function run(sql: string, params: unknown[] = []): Promise<number> {
   return rowCount ?? 0;
 }
 
+export type Locale = "en" | "ml";
+export const LOCALES: Locale[] = ["en", "ml"];
+export const DEFAULT_LOCALE: Locale = "en";
+
 // ---------------------------------------------------------------- types ----
 export interface Course {
   id: string;
   slug: string;
-  title: string;
-  subtitle: string | null;
-  audience: string | null;
-  description: string | null;
   accent: string | null;
   status: "draft" | "published";
   position: number;
   created_at: string;
   updated_at: string;
 }
-export interface Chapter {
-  id: string;
-  course_id: string;
+/** A course with its title resolved for one locale. */
+export interface CourseView extends Course {
   title: string;
-  position: number;
-  created_at: string;
-  updated_at: string;
+  subtitle: string | null;
+  audience: string | null;
+  /** True when the requested locale had no row and English was used. */
+  translation_fallback: boolean;
 }
 export interface Lesson {
   id: string;
-  chapter_id: string;
-  course_id: string;
-  title: string;
-  takeaway: string | null;
-  tools: string | null;
   duration_min: number;
-  position: number;
+  tools: string | null;
   created_at: string;
   updated_at: string;
+}
+export interface LessonView extends Lesson {
+  title: string;
+  covers: string | null;
+  translation_fallback: boolean;
+  /** Position within the course it was read through. */
+  position: number;
+  is_advanced: boolean;
 }
 export interface Video {
   id: string;
   lesson_id: string;
+  locale: Locale;
   original_name: string | null;
   status: "pending" | "encoding" | "uploading" | "ready" | "error";
   progress: number;
   stage: string | null;
-  storage: string | null;
-  master_url: string | null;
-  poster_url: string | null;
-  renditions: string | null;
+  storage: "r2" | "local" | null;
+  storage_key: string | null;
+  has_poster: boolean;
+  renditions: string[] | null;
   duration_sec: number | null;
   error: string | null;
   created_at: string;
   updated_at: string;
 }
-export interface Pdf {
+/** A video with playable URLs built from its key. */
+export interface VideoView extends Video {
+  master_url: string | null;
+  poster_url: string | null;
+}
+export interface DocumentRow {
   id: string;
   lesson_id: string;
+  kind: "worksheet" | "handout";
+  locale: Locale;
   title: string;
   filename: string;
-  url: string;
-  storage: string;
+  storage_key: string;
+  storage: "r2" | "local";
   size_bytes: number | null;
-  position: number;
   created_at: string;
 }
-export interface Certificate {
+export interface DocumentView extends DocumentRow {
+  url: string;
+}
+export interface CertificateTemplate {
   id: string;
   course_id: string;
-  title: string;
   issuer: string;
   partner: string;
   signature_name: string | null;
   signature_title: string | null;
-  enabled: number;
+  enabled: boolean;
   created_at: string;
   updated_at: string;
 }
 
-// -------------------------------------------------------------- helpers ----
-async function nextPos(table: string, whereCol: string | null, val?: string): Promise<number> {
-  if (whereCol) {
-    const r = await one<{ n: number }>(
-      `SELECT COALESCE(MAX(position), -1) + 1 AS n FROM ${table} WHERE ${whereCol} = $1`,
-      [val]
-    );
-    return Number(r!.n);
-  }
-  const r = await one<{ n: number }>(`SELECT COALESCE(MAX(position), -1) + 1 AS n FROM ${table}`);
-  return Number(r!.n);
+function toVideoView(v: Video): VideoView {
+  return {
+    ...v,
+    master_url: v.storage_key ? assetUrl(v.storage, `${v.storage_key}/master.m3u8`) : null,
+    poster_url:
+      v.storage_key && v.has_poster ? assetUrl(v.storage, `${v.storage_key}/poster.jpg`) : null,
+  };
+}
+function toDocumentView(d: DocumentRow): DocumentView {
+  return { ...d, url: assetUrl(d.storage, d.storage_key)! };
 }
 
 // -------------------------------------------------------------- courses ----
@@ -107,214 +128,528 @@ export async function createCourse(input: {
   title: string;
   subtitle?: string;
   audience?: string;
-  description?: string;
   accent?: string;
-}): Promise<Course> {
-  const now = nowIso();
+  locale?: Locale;
+}): Promise<CourseView> {
   const cid = id("crs");
   const base = slugify(input.title);
   let slug = base;
   let i = 2;
   while (await one("SELECT 1 FROM courses WHERE slug = $1", [slug])) slug = `${base}-${i++}`;
-  const pos = await nextPos("courses", null);
-  await run(
-    `INSERT INTO courses (id, slug, title, subtitle, audience, description, accent, status, position, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'draft',$8,$9,$10)`,
-    [cid, slug, input.title, input.subtitle ?? null, input.audience ?? null, input.description ?? null, input.accent ?? null, pos, now, now]
+  const pos = await one<{ n: number }>(
+    "SELECT COALESCE(MAX(position), -1) + 1 AS n FROM courses"
   );
+  await run(
+    `INSERT INTO courses (id, slug, accent, status, position) VALUES ($1,$2,$3,'draft',$4)`,
+    [cid, slug, input.accent ?? null, Number(pos!.n)]
+  );
+  await upsertCourseTranslation(cid, input.locale ?? DEFAULT_LOCALE, {
+    title: input.title,
+    subtitle: input.subtitle ?? null,
+    audience: input.audience ?? null,
+  });
   return (await getCourse(cid))!;
 }
-export function listCourses(): Promise<Course[]> {
-  return all<Course>("SELECT * FROM courses ORDER BY position, created_at");
+
+// COALESCE across the requested locale and English is the fallback rule, in one
+// query rather than a second round trip when a translation is missing.
+const COURSE_SELECT = `
+  SELECT c.*,
+         COALESCE(t.title, en.title)       AS title,
+         COALESCE(t.subtitle, en.subtitle) AS subtitle,
+         COALESCE(t.audience, en.audience) AS audience,
+         (t.title IS NULL)                 AS translation_fallback
+    FROM courses c
+    LEFT JOIN course_translations t  ON t.course_id  = c.id AND t.locale  = $1
+    LEFT JOIN course_translations en ON en.course_id = c.id AND en.locale = 'en'`;
+
+export function listCourses(locale: Locale = DEFAULT_LOCALE): Promise<CourseView[]> {
+  return all<CourseView>(`${COURSE_SELECT} ORDER BY c.position, c.created_at`, [locale]);
 }
-export function getCourse(cid: string): Promise<Course | undefined> {
-  return one<Course>("SELECT * FROM courses WHERE id = $1", [cid]);
+export function listPublishedCourses(locale: Locale = DEFAULT_LOCALE): Promise<CourseView[]> {
+  return all<CourseView>(
+    `${COURSE_SELECT} WHERE c.status = 'published' ORDER BY c.position, c.created_at`,
+    [locale]
+  );
 }
-export function getCourseBySlug(slug: string): Promise<Course | undefined> {
-  return one<Course>("SELECT * FROM courses WHERE slug = $1", [slug]);
+export function getCourse(cid: string, locale: Locale = DEFAULT_LOCALE) {
+  return one<CourseView>(`${COURSE_SELECT} WHERE c.id = $2`, [locale, cid]);
 }
+export function getCourseBySlug(slug: string, locale: Locale = DEFAULT_LOCALE) {
+  return one<CourseView>(`${COURSE_SELECT} WHERE c.slug = $2`, [locale, slug]);
+}
+
 export async function updateCourse(
   cid: string,
-  patch: Partial<Pick<Course, "title" | "subtitle" | "audience" | "description" | "accent" | "status" | "position">>
-): Promise<Course | undefined> {
-  const cur = await getCourse(cid);
+  patch: Partial<Pick<Course, "accent" | "status" | "position">> & {
+    title?: string;
+    subtitle?: string | null;
+    audience?: string | null;
+    locale?: Locale;
+  }
+): Promise<CourseView | undefined> {
+  const cur = await one<Course>("SELECT * FROM courses WHERE id = $1", [cid]);
   if (!cur) return undefined;
-  const m = { ...cur, ...patch, updated_at: nowIso() };
+
+  const m = { ...cur, ...patch };
   await run(
-    `UPDATE courses SET title=$1, subtitle=$2, audience=$3, description=$4, accent=$5, status=$6, position=$7, updated_at=$8 WHERE id=$9`,
-    [m.title, m.subtitle, m.audience, m.description, m.accent, m.status, m.position, m.updated_at, cid]
+    `UPDATE courses SET accent=$1, status=$2, position=$3, updated_at=now() WHERE id=$4`,
+    [m.accent, m.status, m.position, cid]
   );
-  return getCourse(cid);
+
+  if (patch.title !== undefined || patch.subtitle !== undefined || patch.audience !== undefined) {
+    const locale = patch.locale ?? DEFAULT_LOCALE;
+    const existing = await getCourseTranslation(cid, locale);
+    await upsertCourseTranslation(cid, locale, {
+      title: patch.title ?? existing?.title ?? "",
+      subtitle: patch.subtitle !== undefined ? patch.subtitle : existing?.subtitle ?? null,
+      audience: patch.audience !== undefined ? patch.audience : existing?.audience ?? null,
+    });
+  }
+  return getCourse(cid, patch.locale ?? DEFAULT_LOCALE);
 }
+
 export async function deleteCourse(cid: string): Promise<boolean> {
+  // course_lessons cascades, but the lessons themselves survive: they may be
+  // shared with another course, and RESTRICT would block the delete anyway.
   return (await run("DELETE FROM courses WHERE id = $1", [cid])) > 0;
 }
 
-// ------------------------------------------------------------- chapters ----
-export async function createChapter(courseId: string, title: string): Promise<Chapter> {
-  const now = nowIso();
-  const cid = id("chp");
-  const pos = await nextPos("chapters", "course_id", courseId);
-  await run(
-    `INSERT INTO chapters (id, course_id, title, position, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6)`,
-    [cid, courseId, title, pos, now, now]
+// --------------------------------------------------------- translations ----
+export interface CourseTranslation {
+  course_id: string;
+  locale: Locale;
+  title: string;
+  subtitle: string | null;
+  audience: string | null;
+}
+export function getCourseTranslation(cid: string, locale: Locale) {
+  return one<CourseTranslation>(
+    "SELECT * FROM course_translations WHERE course_id = $1 AND locale = $2",
+    [cid, locale]
   );
-  return (await getChapter(cid))!;
 }
-export function getChapter(cid: string): Promise<Chapter | undefined> {
-  return one<Chapter>("SELECT * FROM chapters WHERE id = $1", [cid]);
+export function listCourseTranslations(cid: string) {
+  return all<CourseTranslation>(
+    "SELECT * FROM course_translations WHERE course_id = $1 ORDER BY locale",
+    [cid]
+  );
 }
-export function listChapters(courseId: string): Promise<Chapter[]> {
-  return all<Chapter>("SELECT * FROM chapters WHERE course_id = $1 ORDER BY position, created_at", [courseId]);
+export async function upsertCourseTranslation(
+  cid: string,
+  locale: Locale,
+  input: { title: string; subtitle?: string | null; audience?: string | null }
+): Promise<void> {
+  await run(
+    `INSERT INTO course_translations (course_id, locale, title, subtitle, audience)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (course_id, locale)
+     DO UPDATE SET title = EXCLUDED.title, subtitle = EXCLUDED.subtitle, audience = EXCLUDED.audience`,
+    [cid, locale, input.title, input.subtitle ?? null, input.audience ?? null]
+  );
 }
-export async function updateChapter(cid: string, patch: Partial<Pick<Chapter, "title" | "position">>): Promise<Chapter | undefined> {
-  const cur = await getChapter(cid);
-  if (!cur) return undefined;
-  const m = { ...cur, ...patch, updated_at: nowIso() };
-  await run("UPDATE chapters SET title=$1, position=$2, updated_at=$3 WHERE id=$4", [m.title, m.position, m.updated_at, cid]);
-  return getChapter(cid);
+
+export interface LessonTranslation {
+  lesson_id: string;
+  locale: Locale;
+  title: string;
+  covers: string | null;
 }
-export async function deleteChapter(cid: string): Promise<boolean> {
-  return (await run("DELETE FROM chapters WHERE id = $1", [cid])) > 0;
+export function listLessonTranslations(lid: string) {
+  return all<LessonTranslation>(
+    "SELECT * FROM lesson_translations WHERE lesson_id = $1 ORDER BY locale",
+    [lid]
+  );
+}
+export function getLessonTranslation(lid: string, locale: Locale) {
+  return one<LessonTranslation>(
+    "SELECT * FROM lesson_translations WHERE lesson_id = $1 AND locale = $2",
+    [lid, locale]
+  );
+}
+export async function upsertLessonTranslation(
+  lid: string,
+  locale: Locale,
+  input: { title: string; covers?: string | null }
+): Promise<void> {
+  await run(
+    `INSERT INTO lesson_translations (lesson_id, locale, title, covers)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (lesson_id, locale)
+     DO UPDATE SET title = EXCLUDED.title, covers = EXCLUDED.covers`,
+    [lid, locale, input.title, input.covers ?? null]
+  );
 }
 
 // -------------------------------------------------------------- lessons ----
+const LESSON_SELECT = `
+  SELECT l.*,
+         cl.position, cl.is_advanced,
+         COALESCE(t.title, en.title)   AS title,
+         COALESCE(t.covers, en.covers) AS covers,
+         (t.title IS NULL)             AS translation_fallback
+    FROM lessons l
+    JOIN course_lessons cl ON cl.lesson_id = l.id
+    LEFT JOIN lesson_translations t  ON t.lesson_id  = l.id AND t.locale  = $1
+    LEFT JOIN lesson_translations en ON en.lesson_id = l.id AND en.locale = 'en'`;
+
+/**
+ * Creates a lesson and attaches it to a course. A lesson is not owned by a
+ * course — this is the only place the two are joined at creation time, and
+ * `attachLesson` exists to add the same lesson to a second course.
+ */
 export async function createLesson(
-  chapterId: string,
-  input: { title: string; takeaway?: string; tools?: string; durationMin?: number }
-): Promise<Lesson> {
-  const chapter = await getChapter(chapterId);
-  if (!chapter) throw new Error("chapter not found");
-  const now = nowIso();
+  courseId: string,
+  input: {
+    title: string;
+    covers?: string;
+    tools?: string;
+    durationMin?: number;
+    locale?: Locale;
+    isAdvanced?: boolean;
+  }
+): Promise<LessonView> {
   const lid = id("lsn");
-  const pos = await nextPos("lessons", "chapter_id", chapterId);
-  await run(
-    `INSERT INTO lessons (id, chapter_id, course_id, title, takeaway, tools, duration_min, position, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [lid, chapterId, chapter.course_id, input.title, input.takeaway ?? null, input.tools ?? null, input.durationMin ?? 0, pos, now, now]
+  await run(`INSERT INTO lessons (id, duration_min, tools) VALUES ($1,$2,$3)`, [
+    lid,
+    input.durationMin ?? 30,
+    input.tools ?? null,
+  ]);
+  await upsertLessonTranslation(lid, input.locale ?? DEFAULT_LOCALE, {
+    title: input.title,
+    covers: input.covers ?? null,
+  });
+  await attachLesson(courseId, lid, { isAdvanced: input.isAdvanced });
+  return (await getLesson(lid, courseId))!;
+}
+
+/** Adds an existing lesson to a course at the next free position. */
+export async function attachLesson(
+  courseId: string,
+  lessonId: string,
+  opts: { position?: number; isAdvanced?: boolean } = {}
+): Promise<void> {
+  const next = await one<{ n: number }>(
+    "SELECT COALESCE(MAX(position), 0) + 1 AS n FROM course_lessons WHERE course_id = $1",
+    [courseId]
   );
-  return (await getLesson(lid))!;
+  await run(
+    `INSERT INTO course_lessons (course_id, lesson_id, position, is_advanced)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (course_id, lesson_id) DO NOTHING`,
+    [courseId, lessonId, opts.position ?? Number(next!.n), opts.isAdvanced ?? false]
+  );
 }
-export function getLesson(lid: string): Promise<Lesson | undefined> {
-  return one<Lesson>("SELECT * FROM lessons WHERE id = $1", [lid]);
+
+export function detachLesson(courseId: string, lessonId: string): Promise<number> {
+  return run("DELETE FROM course_lessons WHERE course_id = $1 AND lesson_id = $2", [
+    courseId,
+    lessonId,
+  ]);
 }
-export function listLessons(chapterId: string): Promise<Lesson[]> {
-  return all<Lesson>("SELECT * FROM lessons WHERE chapter_id = $1 ORDER BY position, created_at", [chapterId]);
+
+export function getLesson(lid: string, courseId?: string, locale: Locale = DEFAULT_LOCALE) {
+  return courseId
+    ? one<LessonView>(`${LESSON_SELECT} WHERE l.id = $2 AND cl.course_id = $3`, [
+        locale,
+        lid,
+        courseId,
+      ])
+    : one<LessonView>(`${LESSON_SELECT} WHERE l.id = $2 ORDER BY cl.course_id LIMIT 1`, [
+        locale,
+        lid,
+      ]);
 }
+
+export function listLessons(courseId: string, locale: Locale = DEFAULT_LOCALE) {
+  return all<LessonView>(`${LESSON_SELECT} WHERE cl.course_id = $2 ORDER BY cl.position`, [
+    locale,
+    courseId,
+  ]);
+}
+
+/** Which courses use this lesson — the "what would editing this affect?" query. */
+export function coursesUsingLesson(lid: string) {
+  return all<{ course_id: string; slug: string; position: number }>(
+    `SELECT cl.course_id, c.slug, cl.position
+       FROM course_lessons cl JOIN courses c ON c.id = cl.course_id
+      WHERE cl.lesson_id = $1 ORDER BY c.position`,
+    [lid]
+  );
+}
+
 export async function updateLesson(
   lid: string,
-  patch: Partial<Pick<Lesson, "title" | "takeaway" | "tools" | "duration_min" | "position">>
-): Promise<Lesson | undefined> {
-  const cur = await getLesson(lid);
+  patch: {
+    title?: string;
+    covers?: string | null;
+    tools?: string | null;
+    duration_min?: number;
+    locale?: Locale;
+  }
+): Promise<LessonView | undefined> {
+  const cur = await one<Lesson>("SELECT * FROM lessons WHERE id = $1", [lid]);
   if (!cur) return undefined;
-  const m = { ...cur, ...patch, updated_at: nowIso() };
-  await run(
-    "UPDATE lessons SET title=$1, takeaway=$2, tools=$3, duration_min=$4, position=$5, updated_at=$6 WHERE id=$7",
-    [m.title, m.takeaway, m.tools, m.duration_min, m.position, m.updated_at, lid]
-  );
-  return getLesson(lid);
+
+  const m = { ...cur, ...patch };
+  await run("UPDATE lessons SET duration_min=$1, tools=$2, updated_at=now() WHERE id=$3", [
+    m.duration_min,
+    m.tools,
+    lid,
+  ]);
+
+  if (patch.title !== undefined || patch.covers !== undefined) {
+    const locale = patch.locale ?? DEFAULT_LOCALE;
+    const existing = await getLessonTranslation(lid, locale);
+    await upsertLessonTranslation(lid, locale, {
+      title: patch.title ?? existing?.title ?? "",
+      covers: patch.covers !== undefined ? patch.covers : existing?.covers ?? null,
+    });
+  }
+  return getLesson(lid, undefined, patch.locale ?? DEFAULT_LOCALE);
 }
+
+/**
+ * Deletes a lesson outright. Fails if any course still uses it — the schema
+ * enforces this, because a shared lesson is usually being deleted by someone
+ * looking at only one of the courses that need it.
+ */
 export async function deleteLesson(lid: string): Promise<boolean> {
   return (await run("DELETE FROM lessons WHERE id = $1", [lid])) > 0;
 }
 
+export async function reorderLessons(courseId: string, lessonIds: string[]): Promise<void> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    // Park positions out of range first: the unique index on (course_id,
+    // position) would otherwise collide half-way through the reshuffle.
+    await client.query(
+      "UPDATE course_lessons SET position = position + 1000 WHERE course_id = $1",
+      [courseId]
+    );
+    for (let i = 0; i < lessonIds.length; i++) {
+      await client.query(
+        "UPDATE course_lessons SET position = $1 WHERE course_id = $2 AND lesson_id = $3",
+        [i + 1, courseId, lessonIds[i]]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // --------------------------------------------------------------- videos ----
-export async function createVideo(lessonId: string, originalName: string): Promise<Video> {
-  const now = nowIso();
+export async function createVideo(
+  lessonId: string,
+  locale: Locale,
+  originalName: string
+): Promise<Video> {
   const vid = id("vid");
   await run(
-    `INSERT INTO videos (id, lesson_id, original_name, status, progress, stage, created_at, updated_at)
-     VALUES ($1,$2,$3,'pending',0,'Queued',$4,$5)`,
-    [vid, lessonId, originalName, now, now]
+    `INSERT INTO videos (id, lesson_id, locale, original_name, status, progress, stage)
+     VALUES ($1,$2,$3,$4,'pending',0,'Queued')`,
+    [vid, lessonId, locale, originalName]
   );
   return (await getVideo(vid))!;
 }
-export function getVideo(vid: string): Promise<Video | undefined> {
+export function getVideo(vid: string) {
   return one<Video>("SELECT * FROM videos WHERE id = $1", [vid]);
 }
-export function getLatestVideo(lessonId: string): Promise<Video | undefined> {
-  return one<Video>("SELECT * FROM videos WHERE lesson_id = $1 ORDER BY created_at DESC LIMIT 1", [lessonId]);
+
+/**
+ * The newest READY video for a lesson and language.
+ *
+ * Deliberately not "the newest video": a failed re-encode creates a newer row,
+ * and taking that one replaces a working video with a broken one for every
+ * student. The failure stays visible in the Studio and invisible to learners.
+ */
+export async function getCurrentVideo(
+  lessonId: string,
+  locale: Locale
+): Promise<VideoView | undefined> {
+  const v = await one<Video>(
+    `SELECT * FROM videos WHERE lesson_id = $1 AND locale = $2 AND status = 'ready'
+      ORDER BY created_at DESC LIMIT 1`,
+    [lessonId, locale]
+  );
+  return v ? toVideoView(v) : undefined;
 }
+
+/** Newest row of any status — what the Studio shows, including failures. */
+export async function getLatestVideo(
+  lessonId: string,
+  locale: Locale
+): Promise<VideoView | undefined> {
+  const v = await one<Video>(
+    `SELECT * FROM videos WHERE lesson_id = $1 AND locale = $2 ORDER BY created_at DESC LIMIT 1`,
+    [lessonId, locale]
+  );
+  return v ? toVideoView(v) : undefined;
+}
+
 export async function updateVideo(
   vid: string,
   patch: Partial<
-    Pick<Video, "status" | "progress" | "stage" | "storage" | "master_url" | "poster_url" | "renditions" | "duration_sec" | "error">
+    Pick<
+      Video,
+      | "status"
+      | "progress"
+      | "stage"
+      | "storage"
+      | "storage_key"
+      | "has_poster"
+      | "renditions"
+      | "duration_sec"
+      | "error"
+    >
   >
 ): Promise<Video | undefined> {
   const cur = await getVideo(vid);
   if (!cur) return undefined;
-  const m = { ...cur, ...patch, updated_at: nowIso() };
+  const m = { ...cur, ...patch };
   await run(
-    `UPDATE videos SET status=$1, progress=$2, stage=$3, storage=$4, master_url=$5, poster_url=$6, renditions=$7, duration_sec=$8, error=$9, updated_at=$10 WHERE id=$11`,
-    [m.status, m.progress, m.stage, m.storage, m.master_url, m.poster_url, m.renditions, m.duration_sec, m.error, m.updated_at, vid]
+    `UPDATE videos SET status=$1, progress=$2, stage=$3, storage=$4, storage_key=$5,
+            has_poster=$6, renditions=$7, duration_sec=$8, error=$9, updated_at=now()
+      WHERE id=$10`,
+    [
+      m.status,
+      m.progress,
+      m.stage,
+      m.storage,
+      m.storage_key,
+      m.has_poster,
+      m.renditions,
+      m.duration_sec,
+      m.error,
+      vid,
+    ]
   );
   return getVideo(vid);
 }
 
-// ----------------------------------------------------------------- pdfs ----
-export async function createPdf(
+// ------------------------------------------------------------ documents ----
+export async function createDocument(
   lessonId: string,
-  input: { title: string; filename: string; url: string; storage: string; sizeBytes?: number }
-): Promise<Pdf> {
-  const pid = id("pdf");
-  const pos = await nextPos("pdfs", "lesson_id", lessonId);
+  input: {
+    kind: "worksheet" | "handout";
+    locale: Locale;
+    title: string;
+    filename: string;
+    storageKey: string;
+    storage: "r2" | "local";
+    sizeBytes?: number;
+  }
+): Promise<DocumentView> {
+  const did = id("doc");
+  // One worksheet and one handout per language per lesson: re-upload replaces
+  // rather than accumulating a pile nobody can tell apart.
   await run(
-    `INSERT INTO pdfs (id, lesson_id, title, filename, url, storage, size_bytes, position, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [pid, lessonId, input.title, input.filename, input.url, input.storage, input.sizeBytes ?? null, pos, nowIso()]
+    `INSERT INTO documents (id, lesson_id, kind, locale, title, filename, storage_key, storage, size_bytes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     ON CONFLICT (lesson_id, kind, locale) DO UPDATE SET
+       title = EXCLUDED.title, filename = EXCLUDED.filename,
+       storage_key = EXCLUDED.storage_key, storage = EXCLUDED.storage,
+       size_bytes = EXCLUDED.size_bytes`,
+    [
+      did,
+      lessonId,
+      input.kind,
+      input.locale,
+      input.title,
+      input.filename,
+      input.storageKey,
+      input.storage,
+      input.sizeBytes ?? null,
+    ]
   );
-  return (await one<Pdf>("SELECT * FROM pdfs WHERE id = $1", [pid]))!;
+  return (await getDocument(lessonId, input.kind, input.locale))!;
 }
-export function listPdfs(lessonId: string): Promise<Pdf[]> {
-  return all<Pdf>("SELECT * FROM pdfs WHERE lesson_id = $1 ORDER BY position, created_at", [lessonId]);
+
+export async function getDocument(lessonId: string, kind: string, locale: Locale) {
+  const d = await one<DocumentRow>(
+    "SELECT * FROM documents WHERE lesson_id = $1 AND kind = $2 AND locale = $3",
+    [lessonId, kind, locale]
+  );
+  return d ? toDocumentView(d) : undefined;
 }
-export async function deletePdf(pid: string): Promise<boolean> {
-  return (await run("DELETE FROM pdfs WHERE id = $1", [pid])) > 0;
+export async function listDocuments(lessonId: string, locale?: Locale): Promise<DocumentView[]> {
+  const rows = locale
+    ? await all<DocumentRow>(
+        "SELECT * FROM documents WHERE lesson_id = $1 AND locale = $2 ORDER BY kind",
+        [lessonId, locale]
+      )
+    : await all<DocumentRow>("SELECT * FROM documents WHERE lesson_id = $1 ORDER BY locale, kind", [
+        lessonId,
+      ]);
+  return rows.map(toDocumentView);
+}
+export async function deleteDocument(did: string): Promise<boolean> {
+  return (await run("DELETE FROM documents WHERE id = $1", [did])) > 0;
 }
 
 // --------------------------------------------------------- certificates ----
-export async function upsertCertificate(
+export async function upsertCertificateTemplate(
   courseId: string,
-  input: Partial<Pick<Certificate, "title" | "issuer" | "partner" | "signature_name" | "signature_title" | "enabled">>
-): Promise<Certificate> {
-  const now = nowIso();
-  const cert = await one<Certificate>("SELECT * FROM certificates WHERE course_id = $1", [courseId]);
-  if (!cert) {
-    const cid = id("cert");
+  input: Partial<
+    Pick<
+      CertificateTemplate,
+      "issuer" | "partner" | "signature_name" | "signature_title" | "enabled"
+    >
+  >
+): Promise<CertificateTemplate> {
+  const cur = await getCertificateTemplate(courseId);
+  if (!cur) {
     await run(
-      `INSERT INTO certificates (id, course_id, title, issuer, partner, signature_name, signature_title, enabled, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `INSERT INTO certificate_templates (id, course_id, issuer, partner, signature_name, signature_title, enabled)
+       VALUES ($1,$2,COALESCE($3,'NEXIS School of Business'),COALESCE($4,'Government of Kerala'),$5,$6,COALESCE($7,true))`,
       [
-        cid, courseId, input.title ?? "Certificate of Completion", input.issuer ?? "NEXIS School of Business",
-        input.partner ?? "Government of Kerala", input.signature_name ?? null, input.signature_title ?? null,
-        input.enabled ?? 1, now, now,
+        id("cert"),
+        courseId,
+        input.issuer ?? null,
+        input.partner ?? null,
+        input.signature_name ?? null,
+        input.signature_title ?? null,
+        input.enabled ?? null,
       ]
     );
-    return (await one<Certificate>("SELECT * FROM certificates WHERE id = $1", [cid]))!;
+  } else {
+    const m = { ...cur, ...input };
+    await run(
+      `UPDATE certificate_templates SET issuer=$1, partner=$2, signature_name=$3,
+              signature_title=$4, enabled=$5, updated_at=now() WHERE course_id=$6`,
+      [m.issuer, m.partner, m.signature_name, m.signature_title, m.enabled, courseId]
+    );
   }
-  const m = { ...cert, ...input, updated_at: now };
-  await run(
-    `UPDATE certificates SET title=$1, issuer=$2, partner=$3, signature_name=$4, signature_title=$5, enabled=$6, updated_at=$7 WHERE course_id=$8`,
-    [m.title, m.issuer, m.partner, m.signature_name, m.signature_title, m.enabled, m.updated_at, courseId]
-  );
-  return (await one<Certificate>("SELECT * FROM certificates WHERE course_id = $1", [courseId]))!;
+  return (await getCertificateTemplate(courseId))!;
 }
-export function getCertificate(courseId: string): Promise<Certificate | undefined> {
-  return one<Certificate>("SELECT * FROM certificates WHERE course_id = $1", [courseId]);
+export function getCertificateTemplate(courseId: string) {
+  return one<CertificateTemplate>("SELECT * FROM certificate_templates WHERE course_id = $1", [
+    courseId,
+  ]);
 }
 
 // ---------------------------------------------------------------- trees ----
-export interface LessonNode extends Lesson {
-  video: Video | null;
-  pdfs: Pdf[];
+export interface LessonNode extends LessonView {
+  /** Keyed by locale: every language's video, so the Studio can show slots. */
+  videos: Partial<Record<Locale, VideoView>>;
+  documents: DocumentView[];
+  /** Filled asset slots out of the six a lesson needs. */
+  assets_filled: number;
 }
-export interface ChapterNode extends Chapter {
+export interface CourseTree extends CourseView {
   lessons: LessonNode[];
+  certificate: CertificateTemplate | null;
+  /** Filled slots across the whole course, for the Studio's progress read-out. */
+  assets_filled: number;
+  assets_expected: number;
 }
-export interface CourseTree extends Course {
-  chapters: ChapterNode[];
-  certificate: Certificate | null;
-}
+
+const SLOTS_PER_LESSON = LOCALES.length * 3; // video + worksheet + handout, per locale
 
 function groupBy<T>(items: T[], key: (t: T) => string): Map<string, T[]> {
   const m = new Map<string, T[]>();
@@ -327,58 +662,88 @@ function groupBy<T>(items: T[], key: (t: T) => string): Map<string, T[]> {
   return m;
 }
 
-// Batched: a fixed handful of set-based queries regardless of lesson count,
-// instead of ~50 sequential round-trips to the remote DB.
-export async function getCourseTree(courseId: string): Promise<CourseTree | undefined> {
-  const course = await getCourse(courseId);
+/**
+ * The whole course in a fixed number of queries regardless of lesson count.
+ * Four round trips to a remote database, not one per lesson.
+ */
+export async function getCourseTree(
+  courseId: string,
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CourseTree | undefined> {
+  const course = await getCourse(courseId, locale);
   if (!course) return undefined;
 
-  const [chapters, lessons, cert] = await Promise.all([
-    listChapters(courseId),
-    all<Lesson>("SELECT * FROM lessons WHERE course_id = $1 ORDER BY position, created_at", [courseId]),
-    getCertificate(courseId),
+  const [lessons, cert] = await Promise.all([
+    listLessons(courseId, locale),
+    getCertificateTemplate(courseId),
   ]);
 
   const lessonIds = lessons.map((l) => l.id);
   let videos: Video[] = [];
-  let pdfs: Pdf[] = [];
+  let docs: DocumentRow[] = [];
   if (lessonIds.length) {
-    [videos, pdfs] = await Promise.all([
+    [videos, docs] = await Promise.all([
+      // DISTINCT ON gives the newest row per (lesson, locale) in one pass.
       all<Video>(
-        "SELECT DISTINCT ON (lesson_id) * FROM videos WHERE lesson_id = ANY($1::text[]) ORDER BY lesson_id, created_at DESC",
+        `SELECT DISTINCT ON (lesson_id, locale) * FROM videos
+          WHERE lesson_id = ANY($1::text[])
+          ORDER BY lesson_id, locale, created_at DESC`,
         [lessonIds]
       ),
-      all<Pdf>("SELECT * FROM pdfs WHERE lesson_id = ANY($1::text[]) ORDER BY position, created_at", [lessonIds]),
+      all<DocumentRow>(
+        "SELECT * FROM documents WHERE lesson_id = ANY($1::text[]) ORDER BY locale, kind",
+        [lessonIds]
+      ),
     ]);
   }
 
-  const videoByLesson = new Map(videos.map((v) => [v.lesson_id, v]));
-  const pdfsByLesson = groupBy(pdfs, (p) => p.lesson_id);
+  const videosByLesson = groupBy(videos, (v) => v.lesson_id);
+  const docsByLesson = groupBy(docs, (d) => d.lesson_id);
 
-  const lessonNodes: LessonNode[] = lessons.map((ls) => ({
-    ...ls,
-    video: videoByLesson.get(ls.id) ?? null,
-    pdfs: pdfsByLesson.get(ls.id) ?? [],
-  }));
-  const lessonsByChapter = groupBy(lessonNodes, (l) => l.chapter_id);
+  let filled = 0;
+  const nodes: LessonNode[] = lessons.map((ls) => {
+    const vs: Partial<Record<Locale, VideoView>> = {};
+    for (const v of videosByLesson.get(ls.id) ?? []) vs[v.locale] = toVideoView(v);
+    const ds = (docsByLesson.get(ls.id) ?? []).map(toDocumentView);
+    // A video counts as a filled slot only once it is playable.
+    const n = Object.values(vs).filter((v) => v.status === "ready").length + ds.length;
+    filled += n;
+    return { ...ls, videos: vs, documents: ds, assets_filled: n };
+  });
 
-  const chapterNodes: ChapterNode[] = chapters.map((ch) => ({
-    ...ch,
-    lessons: lessonsByChapter.get(ch.id) ?? [],
-  }));
-  return { ...course, chapters: chapterNodes, certificate: cert ?? null };
+  return {
+    ...course,
+    lessons: nodes,
+    certificate: cert ?? null,
+    assets_filled: filled,
+    assets_expected: nodes.length * SLOTS_PER_LESSON,
+  };
 }
 
-// One query with subquery counts — for the Studio course grid.
-export interface CourseWithCounts extends Course {
-  chapter_count: number;
+/** One query with subquery counts — for the Studio course grid. */
+export interface CourseWithCounts extends CourseView {
   lesson_count: number;
+  assets_filled: number;
 }
-export function listCoursesWithCounts(): Promise<CourseWithCounts[]> {
+export function listCoursesWithCounts(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CourseWithCounts[]> {
   return all<CourseWithCounts>(
     `SELECT c.*,
-       (SELECT count(*)::int FROM chapters ch WHERE ch.course_id = c.id) AS chapter_count,
-       (SELECT count(*)::int FROM lessons l WHERE l.course_id = c.id) AS lesson_count
-     FROM courses c ORDER BY c.position, c.created_at`
+            COALESCE(t.title, en.title)       AS title,
+            COALESCE(t.subtitle, en.subtitle) AS subtitle,
+            COALESCE(t.audience, en.audience) AS audience,
+            (t.title IS NULL)                 AS translation_fallback,
+            (SELECT count(*)::int FROM course_lessons cl WHERE cl.course_id = c.id) AS lesson_count,
+            (SELECT count(*)::int FROM lesson_assets a
+               JOIN course_lessons cl2 ON cl2.lesson_id = a.lesson_id
+              WHERE cl2.course_id = c.id AND a.is_ready)                            AS assets_filled
+       FROM courses c
+       LEFT JOIN course_translations t  ON t.course_id  = c.id AND t.locale  = $1
+       LEFT JOIN course_translations en ON en.course_id = c.id AND en.locale = 'en'
+      ORDER BY c.position, c.created_at`,
+    [locale]
   );
 }
+
+export const SLOTS_PER_LESSON_COUNT = SLOTS_PER_LESSON;

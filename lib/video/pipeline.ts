@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, r2, r2Configured } from "@/lib/env";
-import { getVideo, getLatestVideo, updateVideo } from "@/lib/db/repo";
+import { getVideo, getLatestVideo, updateVideo, type Locale } from "@/lib/db/repo";
 import { encodeHlsLadder, probeVideo, rungsFor } from "./ffmpeg";
 import { ensureCors, makeR2Client, uploadDir } from "./r2";
 
@@ -63,8 +63,6 @@ export async function processVideo(videoId: string): Promise<void> {
   // ---- Publish: R2 if configured, else local /public/hls fallback ----
   const keyPrefix = `hls/${videoId}`;
   let storage: "r2" | "local";
-  let masterUrl: string;
-  let posterUrl: string | null;
 
   if (r2Configured()) {
     await updateVideo(videoId, { status: "uploading", stage: "Uploading to Cloudflare R2", progress: ENCODE_SHARE });
@@ -85,16 +83,12 @@ export async function processVideo(videoId: string): Promise<void> {
       },
     });
     storage = "r2";
-    masterUrl = `${r2.publicUrl}/${keyPrefix}/master.m3u8`;
-    posterUrl = result.hasPoster ? `${r2.publicUrl}/${keyPrefix}/poster.jpg` : null;
   } else {
     await updateVideo(videoId, { status: "uploading", stage: "Publishing locally (R2 not configured)", progress: ENCODE_SHARE });
     const publicDir = path.join(process.cwd(), "public", keyPrefix);
     fs.rmSync(publicDir, { recursive: true, force: true });
     copyDir(workDir, publicDir);
     storage = "local";
-    masterUrl = `/${keyPrefix}/master.m3u8`;
-    posterUrl = result.hasPoster ? `/${keyPrefix}/poster.jpg` : null;
   }
 
   await updateVideo(videoId, {
@@ -102,9 +96,9 @@ export async function processVideo(videoId: string): Promise<void> {
     stage: "Ready",
     progress: 1,
     storage,
-    master_url: masterUrl,
-    poster_url: posterUrl,
-    renditions: JSON.stringify(result.renditions),
+    storage_key: keyPrefix,
+    has_poster: result.hasPoster,
+    renditions: result.renditions,
     duration_sec: result.duration,
     error: null,
   });
@@ -114,8 +108,8 @@ export async function processVideo(videoId: string): Promise<void> {
 }
 
 // If a video was interrupted mid-encode by a server restart, surface it.
-export async function markStaleAsError(lessonId: string) {
-  const v = await getLatestVideo(lessonId);
+export async function markStaleAsError(lessonId: string, locale: Locale) {
+  const v = await getLatestVideo(lessonId, locale);
   if (v && (v.status === "encoding" || v.status === "uploading")) {
     await updateVideo(v.id, { status: "error", error: "Interrupted by server restart — re-upload to retry." });
   }

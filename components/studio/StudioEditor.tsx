@@ -5,33 +5,42 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Skeleton, SnakeBar } from "@/components/Skeleton";
 
 // --- Shapes (plain, no server imports) --------------------------------------
+export const LOCALES = ["en", "ml"] as const;
+export type Locale = (typeof LOCALES)[number];
+export const LOCALE_LABEL: Record<Locale, string> = { en: "EN", ml: "ML" };
+const DOC_KINDS = ["worksheet", "handout"] as const;
+type DocKind = (typeof DOC_KINDS)[number];
+
 type Video = {
   id: string;
+  locale: Locale;
   status: string;
   progress: number;
   stage: string | null;
   storage: string | null;
   master_url: string | null;
-  renditions: string | null;
+  renditions: string[] | null;
 } | null;
-type Pdf = { id: string; title: string; url: string; storage: string };
+type Doc = { id: string; kind: DocKind; locale: Locale; title: string; url: string };
 type Lesson = {
   id: string;
   title: string;
-  takeaway: string | null;
+  covers: string | null;
   tools: string | null;
   duration_min: number;
-  video: Video;
-  pdfs: Pdf[];
+  position: number;
+  is_advanced: boolean;
+  translation_fallback: boolean;
+  videos: Partial<Record<Locale, Video>>;
+  documents: Doc[];
+  assets_filled: number;
 };
-type Chapter = { id: string; title: string; lessons: Lesson[] };
 type Cert = {
-  title: string;
   issuer: string;
   partner: string;
   signature_name: string | null;
   signature_title: string | null;
-  enabled: number;
+  enabled: boolean;
 } | null;
 export type Tree = {
   id: string;
@@ -41,8 +50,10 @@ export type Tree = {
   audience: string | null;
   status: string;
   accent: string | null;
-  chapters: Chapter[];
+  lessons: Lesson[];
   certificate: Cert;
+  assets_filled: number;
+  assets_expected: number;
 };
 
 async function api(path: string, opts?: RequestInit) {
@@ -68,7 +79,7 @@ function VideoState({ v, job }: { v: Video; job?: { progress: number; stage: str
   }
   if (!v) return <span className="vstatus none">No video</span>;
   if (v.status === "ready") {
-    const rungs = v.renditions ? (JSON.parse(v.renditions) as string[]).join(" · ") : "";
+    const rungs = v.renditions?.join(" · ") ?? "";
     return (
       <span className="vstatus ready" title={`${v.storage?.toUpperCase()} · ${rungs}`}>
         ✓ Ready <em>{v.storage === "r2" ? "R2" : "local"}</em>
@@ -81,11 +92,10 @@ function VideoState({ v, job }: { v: Video; job?: { progress: number; stage: str
 
 // --- Certificate panel ------------------------------------------------------
 function CertPanel({ courseId, cert, onSaved }: { courseId: string; cert: Cert; onSaved: () => void }) {
-  const [title, setTitle] = useState(cert?.title ?? "Certificate of Completion");
   const [issuer, setIssuer] = useState(cert?.issuer ?? "NEXIS School of Business");
   const [partner, setPartner] = useState(cert?.partner ?? "Government of Kerala");
   const [sig, setSig] = useState(cert?.signature_name ?? "");
-  const [enabled, setEnabled] = useState((cert?.enabled ?? 1) === 1);
+  const [enabled, setEnabled] = useState(cert?.enabled ?? true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -96,7 +106,7 @@ function CertPanel({ courseId, cert, onSaved }: { courseId: string; cert: Cert; 
       await api(`/api/courses/${courseId}/certificate`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, issuer, partner, signature_name: sig || null, enabled: enabled ? 1 : 0 }),
+        body: JSON.stringify({ issuer, partner, signature_name: sig || null, enabled }),
       });
       setMsg("Saved");
       onSaved();
@@ -110,7 +120,6 @@ function CertPanel({ courseId, cert, onSaved }: { courseId: string; cert: Cert; 
   return (
     <div className="cert-form">
       <div className="cert-grid">
-        <label className="field"><span>Certificate title</span><input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
         <label className="field"><span>Issuer</span><input value={issuer} onChange={(e) => setIssuer(e.target.value)} /></label>
         <label className="field"><span>Partner</span><input value={partner} onChange={(e) => setPartner(e.target.value)} /></label>
         <label className="field"><span>Signatory</span><input value={sig} onChange={(e) => setSig(e.target.value)} placeholder="Principal" /></label>
@@ -129,8 +138,7 @@ function CertPanel({ courseId, cert, onSaved }: { courseId: string; cert: Cert; 
 // --- Main editor ------------------------------------------------------------
 export default function StudioEditor({ initial }: { initial: Tree }) {
   const [tree, setTree] = useState<Tree>(initial);
-  const [chapterTitle, setChapterTitle] = useState("");
-  const [lessonTitle, setLessonTitle] = useState<Record<string, string>>({});
+  const [lessonTitle, setLessonTitle] = useState("");
   const [jobs, setJobs] = useState<Record<string, { progress: number; stage: string; status: string }>>({});
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(0);
@@ -152,77 +160,70 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
       .finally(() => setBusy((b) => b - 1));
   }
 
-  async function addChapter() {
-    if (chapterTitle.trim().length < 1) return;
-    await guard(async () => {
-      await api(`/api/courses/${initial.id}/chapters`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: chapterTitle.trim() }),
-      });
-      setChapterTitle("");
-      await reload();
-    });
-  }
-
-  async function addLesson(chapterId: string) {
-    const t = (lessonTitle[chapterId] || "").trim();
+  async function addLesson() {
+    const t = lessonTitle.trim();
     if (!t) return;
     await guard(async () => {
-      await api(`/api/chapters/${chapterId}/lessons`, {
+      await api(`/api/courses/${initial.id}/lessons`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: t }),
       });
-      setLessonTitle((m) => ({ ...m, [chapterId]: "" }));
+      setLessonTitle("");
       await reload();
     });
   }
 
-  function pollVideo(lessonId: string, videoId: string) {
-    clearInterval(timers.current[lessonId]);
-    timers.current[lessonId] = setInterval(async () => {
+  function pollVideo(key: string, videoId: string) {
+    clearInterval(timers.current[key]);
+    timers.current[key] = setInterval(async () => {
       try {
         const v = await api(`/api/videos/${videoId}`);
-        setJobs((j) => ({ ...j, [lessonId]: { progress: v.progress, stage: v.stage || v.status, status: v.status } }));
+        setJobs((j) => ({ ...j, [key]: { progress: v.progress, stage: v.stage || v.status, status: v.status } }));
         if (v.status === "ready" || v.status === "error") {
-          clearInterval(timers.current[lessonId]);
+          clearInterval(timers.current[key]);
           setJobs((j) => {
             const n = { ...j };
-            delete n[lessonId];
+            delete n[key];
             return n;
           });
           await reload();
         }
       } catch {
-        clearInterval(timers.current[lessonId]);
+        clearInterval(timers.current[key]);
       }
     }, 1200);
   }
 
-  async function uploadVideo(lessonId: string, file: File) {
+  // Jobs are keyed by lesson AND locale: the English and Malayalam videos for
+  // one lesson can encode at the same time.
+  async function uploadVideo(lessonId: string, locale: Locale, file: File) {
+    const key = `${lessonId}:${locale}`;
     setErr(null);
-    setJobs((j) => ({ ...j, [lessonId]: { progress: 0, stage: "Uploading source…", status: "pending" } }));
+    setJobs((j) => ({ ...j, [key]: { progress: 0, stage: "Uploading source…", status: "pending" } }));
     await guard(async () => {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("locale", locale);
       const video = await api(`/api/lessons/${lessonId}/video`, { method: "POST", body: fd });
-      pollVideo(lessonId, video.id);
+      pollVideo(key, video.id);
     });
   }
 
-  async function uploadPdf(lessonId: string, file: File) {
+  async function uploadDoc(lessonId: string, kind: DocKind, locale: Locale, file: File) {
     await guard(async () => {
       const fd = new FormData();
       fd.append("file", file);
-      await api(`/api/lessons/${lessonId}/pdfs`, { method: "POST", body: fd });
+      fd.append("kind", kind);
+      fd.append("locale", locale);
+      await api(`/api/lessons/${lessonId}/documents`, { method: "POST", body: fd });
       await reload();
     });
   }
 
-  async function delPdf(pdfId: string) {
+  async function delDoc(docId: string) {
     await guard(async () => {
-      await api(`/api/pdfs/${pdfId}`, { method: "DELETE" });
+      await api(`/api/documents/${docId}`, { method: "DELETE" });
       await reload();
     });
   }
@@ -233,13 +234,6 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
       await reload();
     });
   }
-  async function delChapter(chapterId: string) {
-    await guard(async () => {
-      await api(`/api/chapters/${chapterId}`, { method: "DELETE" });
-      await reload();
-    });
-  }
-
   async function togglePublish() {
     await guard(async () => {
       await api(`/api/courses/${initial.id}`, {
@@ -259,8 +253,11 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
           <Link href="/admin/studio" className="crumb">← All courses</Link>
           <h1>{tree.title}</h1>
           <p className="muted">
-            {tree.audience} · {tree.chapters.length} chapters ·{" "}
-            {tree.chapters.reduce((n, c) => n + c.lessons.length, 0)} lessons
+            {tree.audience} · {tree.lessons.length} lessons ·{" "}
+            <strong>
+              {tree.assets_filled}/{tree.assets_expected}
+            </strong>{" "}
+            assets ready
           </p>
         </div>
         <div className="studio-head-actions">
@@ -273,83 +270,95 @@ export default function StudioEditor({ initial }: { initial: Tree }) {
 
       {err && <p className="form-err banner">{err}</p>}
 
-      {/* Chapters + lessons */}
-      {tree.chapters.map((ch, ci) => (
-        <section key={ch.id} className="chapter-block">
-          <div className="chapter-title-row">
-            <h2>
-              <span className="phase-index">Chapter {ci + 1}</span> {ch.title}
-            </h2>
-            <button className="btn btn-small btn-ghost danger" onClick={() => delChapter(ch.id)}>Delete</button>
-          </div>
-
-          {ch.lessons.map((ls, li) => (
-            <div key={ls.id} className="lesson-item">
-              <div className="lesson-row">
-                <div className="lesson-main">
-                  <span className="lesson-title">
-                    {ci + 1}.{li + 1} &nbsp;{ls.title}
-                  </span>
-                  {ls.takeaway && <span className="lesson-sub">{ls.takeaway}</span>}
-                </div>
-                <VideoState v={ls.video} job={jobs[ls.id]} />
-              </div>
-
-              <div className="lesson-actions">
-                <label className="btn btn-small btn-ghost file">
-                  {ls.video ? "Replace video" : "Upload video"}
-                  <input
-                    type="file"
-                    accept="video/*"
-                    hidden
-                    onChange={(e) => e.target.files?.[0] && uploadVideo(ls.id, e.target.files[0])}
-                  />
-                </label>
-                <label className="btn btn-small btn-ghost file">
-                  + PDF
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    hidden
-                    onChange={(e) => e.target.files?.[0] && uploadPdf(ls.id, e.target.files[0])}
-                  />
-                </label>
-                <button className="btn btn-small btn-ghost danger" onClick={() => delLesson(ls.id)}>Delete</button>
-              </div>
-
-              {ls.pdfs.length > 0 && (
-                <div className="pdf-chips">
-                  {ls.pdfs.map((p) => (
-                    <span key={p.id} className="chip">
-                      <a href={p.url} target="_blank" rel="noreferrer">{p.title}</a>
-                      <button onClick={() => delPdf(p.id)}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
+      {/* Lessons. Six slots each: video, worksheet and handout, in both
+          languages. The counts are what make 96 assets trackable. */}
+      {tree.lessons.map((ls) => (
+        <div key={ls.id} className="lesson-item">
+          <div className="lesson-row">
+            <div className="lesson-main">
+              <span className="lesson-title">
+                {ls.position}. {ls.title}
+                {ls.is_advanced && <em className="pill draft"> advanced</em>}
+              </span>
+              {ls.covers && <span className="lesson-sub">{ls.covers}</span>}
             </div>
-          ))}
-
-          <div className="mini-form">
-            <input
-              placeholder="New lesson title"
-              value={lessonTitle[ch.id] || ""}
-              onChange={(e) => setLessonTitle((m) => ({ ...m, [ch.id]: e.target.value }))}
-              onKeyDown={(e) => e.key === "Enter" && addLesson(ch.id)}
-            />
-            <button className="btn btn-small btn-primary" onClick={() => addLesson(ch.id)}>Add lesson</button>
+            <span className={"vstatus " + (ls.assets_filled === 6 ? "ready" : "none")}>
+              {ls.assets_filled}/6
+            </span>
           </div>
-        </section>
+
+          <div className="slot-grid">
+            {LOCALES.map((loc) => (
+              <div key={loc} className="slot-row">
+                <span className="slot-lang">{LOCALE_LABEL[loc]}</span>
+
+                <div className="slot">
+                  <VideoState v={ls.videos[loc] ?? null} job={jobs[`${ls.id}:${loc}`]} />
+                  <label className="btn btn-small btn-ghost file">
+                    {ls.videos[loc] ? "Replace" : "Upload video"}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      hidden
+                      onChange={(e) =>
+                        e.target.files?.[0] && uploadVideo(ls.id, loc, e.target.files[0])
+                      }
+                    />
+                  </label>
+                </div>
+
+                {DOC_KINDS.map((kind) => {
+                  const doc = ls.documents.find((d) => d.kind === kind && d.locale === loc);
+                  return (
+                    <div key={kind} className="slot">
+                      {doc ? (
+                        <span className="chip">
+                          <a href={doc.url} target="_blank" rel="noreferrer">
+                            {kind}
+                          </a>
+                          <button onClick={() => delDoc(doc.id)} aria-label={`Remove ${kind}`}>
+                            ×
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="vstatus none">No {kind}</span>
+                      )}
+                      <label className="btn btn-small btn-ghost file">
+                        {doc ? "Replace" : `Upload ${kind}`}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          hidden
+                          onChange={(e) =>
+                            e.target.files?.[0] && uploadDoc(ls.id, kind, loc, e.target.files[0])
+                          }
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          <div className="lesson-actions">
+            <button className="btn btn-small btn-ghost danger" onClick={() => delLesson(ls.id)}>
+              Delete lesson
+            </button>
+          </div>
+        </div>
       ))}
 
       <div className="mini-form add-chapter">
         <input
-          placeholder="New chapter title (e.g. Get Started)"
-          value={chapterTitle}
-          onChange={(e) => setChapterTitle(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && addChapter()}
+          placeholder="New lesson title"
+          value={lessonTitle}
+          onChange={(e) => setLessonTitle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addLesson()}
         />
-        <button className="btn btn-primary btn-small" onClick={addChapter}>Add chapter</button>
+        <button className="btn btn-primary btn-small" onClick={addLesson}>
+          Add lesson
+        </button>
       </div>
 
       {/* Certificate */}

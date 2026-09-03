@@ -1,22 +1,31 @@
 import { ok, serverError } from "@/lib/api";
 import { tracks } from "@/lib/data";
 import {
-  createChapter,
+  attachLesson,
   createCourse,
   createLesson,
   getCourseBySlug,
   updateCourse,
-  upsertCertificate,
+  upsertCertificateTemplate,
 } from "@/lib/db/repo";
+import { getPool } from "@/lib/db/pg";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Import the three-track curriculum into the DB. Idempotent by slug.
+// Import the three-course curriculum. Idempotent by slug.
+//
+// Builder and Achiever share eight sessions, so a lesson is created once and
+// attached to both courses. Sessions are matched on title + covers: identical
+// content is the same lesson, which is exactly what the shared-lesson model in
+// docs/SCHEMA.md means. Creating them twice would double the video production.
 export async function POST() {
   try {
     const created: string[] = [];
     const skipped: string[] = [];
+    const shared = new Map<string, string>(); // title|covers → lesson id
+    let reused = 0;
+
     for (const track of tracks) {
       if (await getCourseBySlug(track.id)) {
         skipped.push(track.id);
@@ -29,23 +38,42 @@ export async function POST() {
         accent: track.accent,
       });
       await updateCourse(course.id, { status: "published" });
-      await upsertCertificate(course.id, {
+      await upsertCertificateTemplate(course.id, {
         signature_name: "Principal",
-        signature_title: `${track.name} Track`,
+        signature_title: `${track.name} Course`,
       });
-      // The curriculum is a flat list of sessions, so each course gets one
-      // chapter holding them in order.
-      const chapter = await createChapter(course.id, "Sessions");
+
       for (const s of track.sessions) {
-        await createLesson(chapter.id, {
-          title: s.title,
-          takeaway: s.covers,
-          durationMin: s.durationMin,
-        });
+        const key = `${s.title}|${s.covers}`;
+        const existing = shared.get(key);
+        if (existing) {
+          await attachLesson(course.id, existing, { isAdvanced: s.advanced ?? false });
+          reused++;
+        } else {
+          const lesson = await createLesson(course.id, {
+            title: s.title,
+            covers: s.covers,
+            durationMin: s.durationMin,
+            isAdvanced: s.advanced ?? false,
+          });
+          shared.set(key, lesson.id);
+        }
+      }
+
+      // Class level decides the course, so the mapping is data, not code.
+      const levels =
+        track.id === "explorer" ? [5, 6, 7] : track.id === "builder" ? [8, 9, 10] : [11, 12];
+      for (const level of levels) {
+        await getPool().query(
+          `INSERT INTO course_levels (level, course_id) VALUES ($1,$2)
+           ON CONFLICT (level) DO UPDATE SET course_id = EXCLUDED.course_id`,
+          [level, course.id]
+        );
       }
       created.push(course.slug);
     }
-    return ok({ created, skipped });
+
+    return ok({ created, skipped, lessonsCreated: shared.size, lessonsReused: reused });
   } catch (e) {
     return serverError(e);
   }

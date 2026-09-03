@@ -26,16 +26,21 @@ export const chapterUpdate = z.object({
 
 export const lessonCreate = z.object({
   title: z.string().min(1).max(160),
-  takeaway: z.string().max(600).optional(),
+  covers: z.string().max(1000).optional(),
   tools: z.string().max(200).optional(),
   durationMin: z.number().int().min(0).max(600).optional(),
 });
 export const lessonUpdate = z.object({
   title: z.string().min(1).max(160).optional(),
-  takeaway: z.string().max(600).nullable().optional(),
+  covers: z.string().max(1000).nullable().optional(),
   tools: z.string().max(200).nullable().optional(),
   durationMin: z.number().int().min(0).max(600).optional(),
-  position: z.number().int().optional(),
+});
+
+// Reordering is its own operation: positions are unique per course, so they
+// have to move together rather than one row at a time.
+export const lessonReorder = z.object({
+  lessonIds: z.array(z.string()).min(1).max(200),
 });
 
 export const certificateUpsert = z.object({
@@ -44,5 +49,5 @@ export const certificateUpsert = z.object({
   partner: z.string().max(120).optional(),
   signature_name: z.string().max(120).nullable().optional(),
   signature_title: z.string().max(120).nullable().optional(),
-  enabled: z.union([z.literal(0), z.literal(1)]).optional(),
+  enabled: z.boolean().optional(),
 });
