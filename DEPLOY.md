@@ -44,7 +44,7 @@ R2 creds as Vercel** — otherwise encodes fall back to `/public/hls` and are
 stranded on that machine.
 
 ```bash
-npm run db:setup     # one-time: create tables in Supabase
+npm run db:migrate   # apply pending migrations (see lib/db/migrations)
 npm run dev          # author + upload/encode videos here
 ```
 
