@@ -53,7 +53,6 @@ export async function ensureCors(client: S3Client): Promise<void> {
 }
 
 export async function putFile(client: S3Client, key: string, file: string): Promise<void> {
-  const ext = path.extname(file).toLowerCase();
   await client.send(
     new PutObjectCommand({
       Bucket: r2.bucket,
@@ -61,7 +60,12 @@ export async function putFile(client: S3Client, key: string, file: string): Prom
       Body: fs.createReadStream(file),
       ContentLength: fs.statSync(file).size,
       ContentType: contentTypeFor(file),
-      CacheControl: ext === ".m3u8" ? "public, max-age=60" : "public, max-age=31536000, immutable",
+      // Everything here is immutable, playlists included. A VOD playlist is
+      // written once during encode and never edited: a re-encode produces a new
+      // videoId and therefore a new path. The old 60-second TTL made every
+      // single play revalidate the manifest first — a round trip on the most
+      // latency-sensitive request of the session, for a file that cannot change.
+      CacheControl: "public, max-age=31536000, immutable",
     })
   );
 }

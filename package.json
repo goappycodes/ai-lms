@@ -11,7 +11,10 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:migrate:dry": "node scripts/migrate.mjs --dry-run",
     "db:status": "node scripts/migrate.mjs --status",
-    "db:verify": "node scripts/db-verify.mjs"
+    "db:verify": "node scripts/db-verify.mjs",
+    "db:smoke": "node scripts/db-smoke.mjs",
+    "verify:password": "node --no-warnings scripts/verify-password.ts",
+    "verify": "tsc --noEmit && next build && npm run db:smoke && npm run verify:password"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1103.0",
