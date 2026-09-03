@@ -81,7 +81,7 @@ Environments exist. Nothing here depends on anything.
 | P0-08 | Point a custom domain at the R2 bucket | ⬜ | Deferred by owner. Needs a domain on Cloudflare DNS. Only code change is `R2_PUBLIC_URL`; schema now stores keys not URLs ([PR #5](https://github.com/goappycodes/ai-lms/pull/5)) |
 | P0-07 | Create the Sentry and Firebase projects, collect keys | ✅ | Sentry `the-starks/ai-veda-lms` (EU region) · Firebase `ai-veda-lms`. **Still to do: set the same vars in Vercel, and rotate the auth token** |
 | P6-01 | Wire Sentry, client and server | ✅ | [PR #6](https://github.com/goappycodes/ai-lms/pull/6). Errors only, no Replay. +31.7 kB after tree-shaking tracing |
-| P0-09 | Agree branch, PR and environment workflow | ⬜ | Matters more with several people and no slack |
+| P0-09 | Agree branch, PR and environment workflow | ✅ | [PR #11](https://github.com/goappycodes/ai-lms/pull/11) · [CONTRIBUTING.md](../CONTRIBUTING.md). `npm run verify` runs everything |
 | P0-01 | ✅ `Q1` answered — separate video per language | ✅ | Content production is unblocked |
 | P0-02 | ✅ `Q2` answered — video URLs must be protected | ✅ | Adds `P6-13`…`P6-16` |
 | P0-03 | ✅ `Q6` answered — no offline download | ✅ | Stays out of scope |
@@ -108,7 +108,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | P1-07 | `certificates_issued` with a verification id | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0007_certificates.sql` |
 | P1-08 | `encode_jobs` table | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0008_encode_jobs.sql`. One live job per video |
 | P1-09 | Drop `quizzes` and `quiz_questions` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9) · `0001_drop_legacy.sql`. Also chapters and the old pdfs/certificates |
-| P6-05 | Make VOD playlists immutable | ⬜ | One line. Saves a round trip on every single play |
+| P6-05 | Make VOD playlists immutable | ✅ | [PR #11](https://github.com/goappycodes/ai-lms/pull/11). A playlist never changes; a re-encode gets a new path |
 
 **End of day:** ________________________________________________
 
@@ -126,7 +126,7 @@ content is loaded — doing it later means data migration instead of schema defi
 | P1-15 | **Run the migration on staging and verify** | ✅ | Applied ahead of schedule. 20 tables + `lesson_assets` view live. 🏁 Milestone |
 | P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08`. Enable Smart Tiered Cache — the classroom multiplier |
 | P6-14 | Cloudflare Worker in front of the bucket, validating access | ⬜ | `D-17`. Bucket stops being public |
-| P2-01 | Password hashing helpers | ⬜ | First new dependency — record why |
+| P2-01 | Password hashing helpers | ✅ | [PR #11](https://github.com/goappycodes/ai-lms/pull/11). Node's built-in scrypt — **no new dependency**. 24 checks pass |
 
 **End of day:** ________________________________________________
 
