@@ -6,20 +6,23 @@ import { createVideo, getLatestVideo, getLesson } from "@/lib/db/repo";
 import { uploadPathFor } from "@/lib/video/pipeline";
 import { startEncodeJob } from "@/lib/video/jobs";
 import { findBinary } from "@/lib/video/ffmpeg";
+import { asLocale, localeFrom } from "@/lib/locale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
-    return ok((await getLatestVideo(params.id)) ?? null);
+    return ok((await getLatestVideo(params.id, localeFrom(req))) ?? null);
   } catch (e) {
     return serverError(e);
   }
 }
 
-// Upload a source video → encode HLS ladder → publish to R2 (or local fallback).
+// Upload a source video → encode an HLS ladder → publish to R2 (or a local
+// fallback). One video per lesson per language: Malayalam is a separate
+// recording, not a second audio track (Q1).
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
@@ -36,8 +39,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return bad("multipart field 'file' (a video) is required");
+    const locale = asLocale(form.get("locale"));
 
-    const video = await createVideo(params.id, file.name);
+    const video = await createVideo(params.id, locale, file.name);
     const dir = uploadPathFor(video.id);
     fs.mkdirSync(dir, { recursive: true });
     const safe = file.name.replace(/[^\w.\-]+/g, "_") || "source.mp4";

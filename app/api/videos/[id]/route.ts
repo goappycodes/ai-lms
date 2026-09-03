@@ -12,7 +12,6 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (!v) return notFound("video not found");
     return ok({
       ...v,
-      renditions: v.renditions ? JSON.parse(v.renditions) : null,
       running: isRunning(v.id),
     });
   } catch (e) {
