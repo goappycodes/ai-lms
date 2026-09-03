@@ -14,3 +14,4 @@ next-env.d.ts
 
 # Secrets
 creds.txt
+.env.sentry-build-plugin
