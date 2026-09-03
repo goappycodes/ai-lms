@@ -120,8 +120,8 @@ content is loaded — doing it later means data migration instead of schema defi
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P1-11 | Rewrite `lib/db/repo.ts` against the new schema | 🟨 | **Next.** Schema is live, so repo.ts now queries tables that no longer exist |
-| P1-13 | Update `/api/seed` for the new curriculum and shared lessons | ⬜ | Must stay idempotent |
+| P1-11 | Rewrite `lib/db/repo.ts` against the new schema | ✅ | [PR #10](https://github.com/goappycodes/ai-lms/pull/10). Locale-aware with EN fallback; keys not URLs; Studio rebuilt around the 6 asset slots |
+| P1-13 | Update `/api/seed` for the new curriculum and shared lessons | ✅ | [PR #10](https://github.com/goappycodes/ai-lms/pull/10). Seeded live: **16 lessons created, 8 reused**. Idempotent on re-run |
 | P1-14 | Update `db-setup.mjs` and `db-verify.mjs` | ✅ | [PR #9](https://github.com/goappycodes/ai-lms/pull/9). `db-setup` replaced by `db:migrate`; `db-verify` now reads the catalogue |
 | P1-15 | **Run the migration on staging and verify** | ✅ | Applied ahead of schedule. 20 tables + `lesson_assets` view live. 🏁 Milestone |
 | P6-04 | Put Cloudflare's CDN in front of R2 via the custom domain | ⬜ | Depends on `P0-08`. Enable Smart Tiered Cache — the classroom multiplier |
