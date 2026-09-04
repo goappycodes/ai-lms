@@ -8,7 +8,6 @@ import {
   LOGIN_MAX_FAILURES,
   LOGIN_WINDOW_MINUTES,
   audit,
-  clearLoginFailures,
   findUserByUsername,
   recentLoginFailures,
   setPasswordHash,
@@ -75,9 +74,10 @@ export async function POST(req: Request) {
     }
 
     await startSession(user);
+    // touchLastLogin is what clears the lockout: recentLoginFailures only
+    // counts attempts made after the last successful sign-in.
     await Promise.all([
       touchLastLogin(user.id),
-      clearLoginFailures(username),
       audit({ actorUserId: user.id, action: "auth.login", targetType: "user", targetId: user.id }),
     ]);
 

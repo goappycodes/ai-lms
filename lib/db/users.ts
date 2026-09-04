@@ -177,32 +177,34 @@ export const LOGIN_WINDOW_MINUTES = 15;
 export const LOGIN_MAX_FAILURES = 10;
 
 /**
- * Counts recent failed sign-ins for a username.
+ * Counts failed sign-ins that matter right now: inside the time window, and
+ * since this account last signed in successfully.
  *
- * Deliberately read from `audit_log` rather than an in-memory counter: on
- * serverless there is no single process to hold that counter, so an attacker
- * spread across instances would never trip it. Failures are already being
- * audited, so this costs one indexed read on a path that is rare by design.
+ * Read from `audit_log` rather than an in-memory counter because serverless
+ * has no single process to hold one — an attacker spread across instances
+ * would never trip it. Failures are audited anyway, so this costs one indexed
+ * read on a path that is rare by design.
+ *
+ * The `last_login_at` bound is what clears a lockout, and it is deliberately
+ * NOT done by deleting the failed-attempt rows. An audit log you delete from
+ * is not an audit log: erasing failures on success would let someone who
+ * eventually guessed a password wipe the evidence of guessing. Unknown
+ * usernames have no row, so `-infinity` leaves just the time window.
  */
 export async function recentLoginFailures(username: string): Promise<number> {
   const r = await one<{ n: number }>(
-    `SELECT count(*)::int AS n FROM audit_log
-      WHERE action = 'auth.login_failed'
-        AND target_type = 'username'
-        AND target_id = lower($1)
-        AND created_at > now() - ($2 || ' minutes')::interval`,
+    `SELECT count(*)::int AS n
+       FROM audit_log a
+      WHERE a.action = 'auth.login_failed'
+        AND a.target_type = 'username'
+        AND a.target_id = lower($1)
+        AND a.created_at > now() - ($2 || ' minutes')::interval
+        AND a.created_at > COALESCE(
+              (SELECT u.last_login_at FROM users u WHERE lower(u.username) = lower($1)),
+              '-infinity'::timestamptz)`,
     [username, String(LOGIN_WINDOW_MINUTES)]
   );
   return r?.n ?? 0;
-}
-
-/** Clears the lockout after a successful sign-in. */
-export function clearLoginFailures(username: string): Promise<number> {
-  return run(
-    `DELETE FROM audit_log
-      WHERE action = 'auth.login_failed' AND target_type = 'username' AND target_id = lower($1)`,
-    [username]
-  );
 }
 
 export function listUsersBySchool(schoolId: string, role?: Role): Promise<SafeUser[]> {
