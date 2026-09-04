@@ -314,7 +314,13 @@ console.log("\nLayout regressions this project has already hit once");
     // with nothing to say so. They scroll sideways instead now.
     check("tables no longer hide their last columns", /nth-child\(4\)/.test(css), false);
     check("tables scroll sideways instead", /overflow-x:\s*auto/.test(css), true);
-    check("rows keep a readable minimum width", /min-width:\s*560px/.test(css), true);
+    // The width moved into a variable so each table can set its own; the
+    // guard follows it rather than the old literal, and checks the wiring.
+    check(
+      "rows keep a readable minimum width",
+      /--table-min:\s*560px/.test(css) && /min-width:\s*var\(--table-min\)/.test(css),
+      true
+    );
     // Below 560px the nav bar is hidden, so the account menu carries the links.
     check("the account menu carries the nav on small screens", /user-menu-nav/.test(css), true);
 
@@ -325,6 +331,64 @@ console.log("\nLayout regressions this project has already hit once");
     check("...with the same colour as the nav and footer", /html\s*\{[^}]*--ink-nav/.test(css), true);
     // vh alone forces the body taller than the visible area on a phone.
     check("the body uses svh so a short page does not scroll", /min-height:\s*100svh/.test(css), true);
+
+    // A table row is a CSS grid with a fixed number of tracks. Add a cell to
+    // the markup without widening --cols and that cell silently wraps onto a
+    // line of its own — which is exactly how the Open button ended up under
+    // the class name instead of at the end of its row.
+    const tracks = (decl) => {
+      // Count top-level tracks, ignoring commas inside minmax(0, 1fr).
+      let depth = 0;
+      let n = 1;
+      let spaced = false;
+      for (const ch of decl.trim()) {
+        if (ch === "(") depth++;
+        else if (ch === ")") depth--;
+        else if (ch === " " && depth === 0) spaced = true;
+        else if (spaced) {
+          n++;
+          spaced = false;
+        }
+      }
+      return n;
+    };
+    const colsFor = (cls) => {
+      // \s* because dev serves the stylesheet unminified — ".table {" — and
+      // production serves it as ".table{".
+      const m = css.match(new RegExp("\\." + cls + "\\s*\\{[^}]*?--cols:([^;}]+)"));
+      return m ? tracks(m[1]) : null;
+    };
+    const defaultCols = colsFor("table");
+
+    const fetchPage = async (j, path) =>
+      (await (await fetch(BASE + path, { headers: j.header })).text()).replace(
+        /<!--[\s\S]*?-->/g,
+        ""
+      );
+
+    for (const [path, jarFor] of [
+      ["/school", "demo.school"],
+      ["/teacher", "demo.teacher"],
+      ["/admin/schools", "demo.superadmin"],
+      ["/admin", "demo.superadmin"],
+    ]) {
+      const who = await as(jarFor);
+      const html = await fetchPage(who.jar, path);
+      const tables = html.match(/<div class="table[^"]*">/g) ?? [];
+      for (const [i, tag] of tables.entries()) {
+        const cls = (tag.match(/class="table ([a-z-]+)"/) || [])[1];
+        const want = cls ? colsFor(cls) : defaultCols;
+        // Cells of the header row that follows this table's opening tag.
+        const after = html.slice(html.indexOf(tag) + tag.length);
+        const head = (after.match(/<div class="tr th">([\s\S]*?)<\/div>\s*(?=<div)/) || [])[1] ?? "";
+        const cells = (head.match(/<span/g) ?? []).length;
+        check(
+          `${path} table ${i + 1} declares as many columns as it has cells`,
+          cells === want,
+          true
+        );
+      }
+    }
   }
 }
 

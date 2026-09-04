@@ -973,10 +973,30 @@ a {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow);
+  /* Each table declares its own shape. The default is the five-column one
+     most of them use; a table whose rows have a different number of cells
+     MUST set --cols, or the extra cell wraps onto a line of its own instead
+     of sitting in the row. --table-min is the width it stops shrinking at
+     before the phone breakpoint starts scrolling it sideways. */
+  --cols: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  --table-min: 560px;
+}
+/* Six cells: the last is the row action, sized to the button so it sits hard
+   against the right edge rather than floating in a share of the leftovers. */
+.table-classes {
+  --cols: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1.6fr) minmax(0, 0.9fr) max-content;
+  --table-min: 680px;
+}
+/* Same shape, five cells: class, course, students, year, action. */
+.table-teacher-classes {
+  --cols: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) max-content;
+}
+.table-teachers {
+  --cols: minmax(0, 1.8fr) minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1fr);
 }
 .tr {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.2fr 1fr;
+  grid-template-columns: var(--cols);
   align-items: center;
   gap: 12px;
   padding: 15px 22px;
@@ -1201,7 +1221,7 @@ a {
     -webkit-overflow-scrolling: touch;
   }
   .tr {
-    min-width: 560px;
+    min-width: var(--table-min);
   }
 }
 @media (max-width: 560px) {
@@ -1954,9 +1974,13 @@ a {
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
+  /* The spacing lives here, not on the title. A 44px top margin on a flex
+     item makes the row 44px taller and align-items:center then puts the
+     button half that distance above the heading it belongs to. */
+  margin: 44px 0 18px;
 }
 .section-head .section-title {
-  margin-bottom: 0;
+  margin: 0;
 }
 .page-head-actions {
   display: flex;

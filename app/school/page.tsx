@@ -99,7 +99,7 @@ export default async function SchoolPage() {
             </p>
           </div>
         ) : (
-          <div className="table">
+          <div className="table table-classes">
             <div className="tr th">
               <span>Class</span>
               <span>Course</span>
@@ -150,7 +150,7 @@ export default async function SchoolPage() {
             </p>
           </div>
         ) : (
-          <div className="table">
+          <div className="table table-teachers">
             <div className="tr th">
               <span>Name</span>
               <span>Username</span>

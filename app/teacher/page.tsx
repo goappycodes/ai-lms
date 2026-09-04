@@ -57,7 +57,7 @@ export default async function TeacherPage() {
             </p>
           </div>
         ) : (
-          <div className="table">
+          <div className="table table-teacher-classes">
             <div className="tr th">
               <span>Class</span>
               <span>Course</span>
