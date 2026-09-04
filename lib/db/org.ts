@@ -76,6 +76,7 @@ export interface SchoolOverview {
   name: string;
   district: string | null;
   code: string | null;
+  status: "active" | "archived";
   class_count: number;
   teacher_count: number;
   student_count: number;
@@ -83,7 +84,7 @@ export interface SchoolOverview {
 
 export function getSchoolOverview(schoolId: string): Promise<SchoolOverview | undefined> {
   return one<SchoolOverview>(
-    `SELECT s.id, s.name, s.district, s.code,
+    `SELECT s.id, s.name, s.district, s.code, s.status,
             (SELECT count(*)::int FROM classes c WHERE c.school_id = s.id) AS class_count,
             (SELECT count(*)::int FROM users u
               WHERE u.school_id = s.id AND u.role = 'teacher' AND u.status = 'active') AS teacher_count,

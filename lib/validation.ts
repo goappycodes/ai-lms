@@ -72,11 +72,16 @@ export const schoolCreate = z.object({
   email: z.string().email().max(160).optional(),
 });
 
-export const schoolUpdate = z.object({
-  name: z.string().min(2).max(160).optional(),
-  district: z.string().max(80).nullable().optional(),
-  code: z.string().max(40).nullable().optional(),
-});
+export const schoolUpdate = z
+  .object({
+    name: z.string().min(2).max(160).optional(),
+    // Nullable as well as optional: undefined leaves the field alone, null
+    // clears it. The two have to stay distinguishable all the way to the SQL.
+    district: z.string().max(80).nullable().optional(),
+    code: z.string().max(40).nullable().optional(),
+    status: z.enum(["active", "archived"]).optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update" });
 
 export const teacherCreate = z.object({
   schoolId: z.string().optional(),

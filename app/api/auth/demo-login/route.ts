@@ -3,7 +3,13 @@ import { z } from "zod";
 import { parseBody } from "@/lib/api";
 import { startSession } from "@/lib/auth/session";
 import { homeFor } from "@/lib/auth/current";
-import { audit, findUserByUsername, toSafeUser, touchLastLogin } from "@/lib/db/users";
+import {
+  accountUsable,
+  audit,
+  findUserByUsername,
+  toSafeUser,
+  touchLastLogin,
+} from "@/lib/db/users";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,7 +37,10 @@ export async function POST(req: Request) {
   if ("error" in parsed) return parsed.error;
 
   const user = await findUserByUsername(parsed.data.account);
-  if (!user || user.status !== "active") {
+  // The same predicate the real login uses. Without it, archiving the demo
+  // school would hand out a session here that getCurrentUser then refuses on
+  // the very next request — the split this function exists to prevent.
+  if (!user || !accountUsable(user)) {
     return NextResponse.json(
       { error: "Demo accounts are not set up. POST /api/auth/seed-demo first." },
       { status: 404 }

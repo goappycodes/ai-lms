@@ -32,6 +32,15 @@ export interface User {
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Derived, not stored: does this person belong to an archived school?
+   *
+   * Archiving a school does not touch its people's rows. If it disabled every
+   * one of them, restoring could not tell the accounts it disabled from the
+   * ones that were already disabled, and would hand access back to people who
+   * should not have it. So the block is read at the gate instead.
+   */
+  school_archived: boolean;
 }
 
 /** What the app passes around. Never carries the password hash. */
@@ -43,11 +52,28 @@ export function toSafeUser(u: User): SafeUser {
 }
 
 // ----------------------------------------------------------------- users ----
+// Both lookups carry the school's archived flag, so every gate that already
+// checks `status` gets the school check for free rather than each one
+// remembering to ask separately.
+const USER_SELECT = `
+  SELECT u.*, COALESCE(s.status = 'archived', false) AS school_archived
+    FROM users u LEFT JOIN schools s ON s.id = u.school_id`;
+
 export function findUserByUsername(username: string): Promise<User | undefined> {
-  return one<User>("SELECT * FROM users WHERE lower(username) = lower($1)", [username]);
+  return one<User>(`${USER_SELECT} WHERE lower(u.username) = lower($1)`, [username]);
 }
 export function findUserById(uid: string): Promise<User | undefined> {
-  return one<User>("SELECT * FROM users WHERE id = $1", [uid]);
+  return one<User>(`${USER_SELECT} WHERE u.id = $1`, [uid]);
+}
+
+/**
+ * May this account be used right now?
+ *
+ * The one predicate both the login route and getCurrentUser ask, so a school
+ * being archived cannot take effect in one place and not the other.
+ */
+export function accountUsable(u: Pick<User, "status" | "school_archived">): boolean {
+  return u.status === "active" && !u.school_archived;
 }
 
 export async function createUser(input: {

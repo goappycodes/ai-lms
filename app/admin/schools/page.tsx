@@ -11,6 +11,8 @@ export default async function SchoolsPage() {
   await requirePage("super_admin");
   const schools = await listSchools();
   const real = schools.filter((s) => !s.is_demo);
+  const live = real.filter((s) => s.status === "active").length;
+  const archived = real.length - live;
 
   return (
     <>
@@ -23,7 +25,8 @@ export default async function SchoolsPage() {
             </Link>
             <h1>Schools</h1>
             <p className="muted">
-              {real.length} {real.length === 1 ? "school" : "schools"}
+              {live} {live === 1 ? "school" : "schools"}
+              {archived > 0 && ` · ${archived} archived`}
               {schools.length > real.length && " · plus the demo school"}
             </p>
           </div>
@@ -36,19 +39,21 @@ export default async function SchoolsPage() {
             <p className="muted">Adding a school also creates the login it signs in with.</p>
           </div>
         ) : (
-          <div className="table">
+          <div className="table table-schools">
             <div className="tr th">
               <span>School</span>
               <span>Signs in as</span>
               <span>Classes</span>
               <span>Teachers</span>
               <span>Students</span>
+              <span></span>
             </div>
             {schools.map((s) => (
-              <div className="tr" key={s.id}>
+              <div className={"tr" + (s.status === "archived" ? " tr-muted" : "")} key={s.id}>
                 <span>
                   {s.name}{" "}
                   {s.is_demo && <em className="pill draft">demo</em>}
+                  {s.status === "archived" && <em className="pill draft">archived</em>}
                   {s.district && <small className="muted"> {s.district}</small>}
                 </span>
                 <span>
@@ -57,6 +62,11 @@ export default async function SchoolsPage() {
                 <span>{s.class_count}</span>
                 <span>{s.teacher_count}</span>
                 <span>{s.student_count}</span>
+                <span>
+                  <Link className="btn btn-small btn-ghost" href={`/admin/schools/${s.id}`}>
+                    Manage
+                  </Link>
+                </span>
               </div>
             ))}
           </div>

@@ -259,12 +259,91 @@ export function listClassStudents(classId: string): Promise<ClassStudent[]> {
     .then((r) => r.rows as ClassStudent[]);
 }
 
+/**
+ * Change a school's name, district or code.
+ *
+ * The SET list is built from the keys actually present, because COALESCE
+ * cannot tell "leave this alone" from "clear this": passing null to
+ * `COALESCE($1, district)` keeps the old value, so a district could be typed
+ * in but never removed.
+ */
+export async function updateSchool(
+  schoolId: string,
+  patch: { name?: string; district?: string | null; code?: string | null }
+): Promise<boolean> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  for (const key of ["name", "district", "code"] as const) {
+    if (patch[key] !== undefined) {
+      values.push(patch[key]);
+      sets.push(`${key} = $${values.length}`);
+    }
+  }
+  if (!sets.length) return true; // nothing asked for is not a failure
+  values.push(schoolId);
+  try {
+    const { rowCount } = await getPool().query(
+      `UPDATE schools SET ${sets.join(", ")}, updated_at = now() WHERE id = $${values.length}`,
+      values
+    );
+    return (rowCount ?? 0) > 0;
+  } catch (e) {
+    if (isUnique(e, "schools_name_key")) {
+      throw new ConflictError("A school with that name already exists.");
+    }
+    if (isUnique(e, "schools_code_key")) {
+      throw new ConflictError("A school with that code already exists.");
+    }
+    throw e;
+  }
+}
+
+/**
+ * Archive a school, or bring it back.
+ *
+ * Deliberately not a delete: classes reference the school with ON DELETE
+ * RESTRICT, and behind them sit students, progress and issued certificates.
+ *
+ * Nobody's account is touched. Access is refused at the gate by reading the
+ * school's status (see `accountUsable`), so restoring is exact — there is no
+ * set of accounts to un-disable, and someone disabled before the school was
+ * archived stays disabled after it comes back.
+ */
+export async function setSchoolStatus(
+  schoolId: string,
+  status: "active" | "archived"
+): Promise<boolean> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const { rowCount } = await client.query(
+      "UPDATE schools SET status = $1, updated_at = now() WHERE id = $2",
+      [status, schoolId]
+    );
+    if (status === "archived") {
+      // Ending access means ending it now, not when the cookies expire.
+      await client.query(
+        "DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE school_id = $1)",
+        [schoolId]
+      );
+    }
+    await client.query("COMMIT");
+    return (rowCount ?? 0) > 0;
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 export interface SchoolRow {
   id: string;
   name: string;
   district: string | null;
   code: string | null;
   is_demo: boolean;
+  status: "active" | "archived";
   username: string;
   class_count: number;
   teacher_count: number;
@@ -275,14 +354,14 @@ export interface SchoolRow {
 export function listSchools(): Promise<SchoolRow[]> {
   return getPool()
     .query(
-      `SELECT s.id, s.name, s.district, s.code, s.is_demo, u.username,
+      `SELECT s.id, s.name, s.district, s.code, s.is_demo, s.status, u.username,
               (SELECT count(*)::int FROM classes c WHERE c.school_id = s.id) AS class_count,
               (SELECT count(*)::int FROM users t
                 WHERE t.school_id = s.id AND t.role = 'teacher' AND t.status = 'active') AS teacher_count,
               (SELECT count(*)::int FROM users st
                 WHERE st.school_id = s.id AND st.role = 'student' AND st.status = 'active') AS student_count
          FROM schools s JOIN users u ON u.id = s.user_id
-        ORDER BY s.is_demo, s.name`
+        ORDER BY s.status, s.is_demo, s.name`
     )
     .then((r) => r.rows as SchoolRow[]);
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth/guard";
-import { canProvisionInSchool, resolveSchoolId } from "@/lib/auth/scope";
+import { canManageSchool, canProvisionInSchool, resolveSchoolId } from "@/lib/auth/scope";
 import { ConflictError, createTeacher } from "@/lib/db/admin";
 import { getSchoolTeachers } from "@/lib/db/org";
 import { audit } from "@/lib/db/users";
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const scope = resolveSchoolId(g.user, new URL(req.url).searchParams.get("schoolId"));
   if (!scope.ok) return NextResponse.json({ error: scope.error }, { status: scope.status });
 
-  const allow = canProvisionInSchool(g.user, scope.schoolId);
+  const allow = canManageSchool(g.user, scope.schoolId);
   if (!allow.ok) return NextResponse.json({ error: allow.error }, { status: allow.status });
 
   return NextResponse.json(await getSchoolTeachers(scope.schoolId));
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const scope = resolveSchoolId(g.user, parsed.data.schoolId);
   if (!scope.ok) return NextResponse.json({ error: scope.error }, { status: scope.status });
 
-  const allow = canProvisionInSchool(g.user, scope.schoolId);
+  const allow = await canProvisionInSchool(g.user, scope.schoolId);
   if (!allow.ok) return NextResponse.json({ error: allow.error }, { status: allow.status });
 
   try {
