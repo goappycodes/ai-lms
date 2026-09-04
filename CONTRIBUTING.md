@@ -77,11 +77,15 @@ Which is typecheck, build, and the two suites that do not need a browser:
 
 `db:smoke` writes nothing — it is safe against the live database.
 
-`verify:auth` needs a dev server. Run it against a **freshly started** one:
-`next build` and `next dev` share `.next`, and a dev server started on top of a
-production build throws `__webpack_modules__[moduleId] is not a function` from
-a page that is perfectly fine. If a page 500s right after `npm run verify`,
-that is why — `rm -rf .next` and restart before believing it.
+`verify:auth` needs a dev server running in another terminal. `npm run verify`
+builds into `.next-verify` rather than `.next` precisely so it can be run
+while one is up — before that, a build would overwrite the directory the dev
+server was holding, and the symptom was `Cannot find the middleware module`
+from a page that was perfectly fine.
+
+Running `npm run build` **directly** still writes to `.next` and will break a
+dev server, because that is what Vercel runs and it has to keep the default.
+Use `npm run verify`; it builds too.
 
 ---
 

@@ -17,7 +17,7 @@
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:redirect": "node --no-warnings scripts/verify-redirect.ts",
     "users:create": "node --no-warnings --env-file=.env.local scripts/create-users.ts",
-    "verify": "tsc --noEmit && next build && npm run db:smoke && npm run verify:password && npm run verify:redirect"
+    "verify": "tsc --noEmit && NEXT_DIST_DIR=.next-verify next build && npm run db:smoke && npm run verify:password && npm run verify:redirect"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1103.0",

@@ -2,6 +2,14 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // `next build` and `next dev` both write to .next by default, so running the
+  // verification suite while a dev server is up leaves that server holding a
+  // directory the build has overwritten underneath it. The symptom is
+  // "Cannot find the middleware module", or an empty middleware manifest, from
+  // a page that is perfectly fine — and the error points at the wrong file.
+  //
+  // `npm run verify` sets NEXT_DIST_DIR so the two never share a directory.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
