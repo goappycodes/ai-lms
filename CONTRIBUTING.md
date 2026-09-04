@@ -83,6 +83,10 @@ while one is up — before that, a build would overwrite the directory the dev
 server was holding, and the symptom was `Cannot find the middleware module`
 from a page that was perfectly fine.
 
+Running `npm run build` **directly** still writes to `.next` and will break a
+dev server, because that is what Vercel runs and it has to keep the default.
+Use `npm run verify`; it builds too.
+
 ---
 
 ## Changing the database
