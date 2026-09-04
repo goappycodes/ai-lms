@@ -155,8 +155,8 @@ fixture data to test anything.
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P2-06 | Real login page — username + password, phone-first | ⬜ | Replaces the current fake form |
-| P2-07 | **Demo login panel — six one-click accounts** | ⬜ | `D-16`. Super Admin · School · Teacher · Student 1/2/3 |
+| P2-06 | Real login page — username + password, phone-first | ✅ | [PR #13](https://github.com/goappycodes/ai-lms/pull/13). 16px inputs (stops iOS zoom), autocapitalise off, no dead language toggle |
+| P2-07 | **Demo login panel — six one-click accounts** | ✅ | [PR #13](https://github.com/goappycodes/ai-lms/pull/13). Posts an account name, not a password — the demo password never reaches the browser |
 | P2-08 | Seed the demo school, class and six accounts | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Refuses to run unless `DEMO_LOGIN=1` |
 | P2-09 | Logout and session expiry | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Verified a copied cookie dies with the session |
 
@@ -195,7 +195,7 @@ screens that will need it.
 | P2-19 | Super admin self-recovery by email verification | ⬜ | Only account in the chain with an email |
 | P2-20 | Temporary password shown once, on screen | ⬜ | For reading aloud to a student |
 | P2-21 | Audit rows on every reset and admin action | ⬜ | Names the person who acted |
-| P3-01 | i18n scaffolding — locale routing and string catalogue | ⬜ | **Do this before writing new screens** |
+| P3-01 | i18n scaffolding — locale routing and string catalogue | 🟨 | Catalogue started in [PR #13](https://github.com/goappycodes/ai-lms/pull/13) (`lib/i18n/strings.ts`, EN + fallback). Still needs locale routing and persistence |
 | P3-04 | Load a Malayalam webfont and add the ML subset | ⬜ | Named in CSS today but never actually loaded |
 
 **End of day:** ________________________________________________
