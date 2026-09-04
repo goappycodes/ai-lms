@@ -138,11 +138,11 @@ content is loaded — doing it later means data migration instead of schema defi
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P2-02 | User creation, lookup and the role model | ⬜ | super admin · school · teacher · student |
-| P2-03 | Session handling — create, verify, destroy | ⬜ | Cookie-based, httpOnly, secure |
-| P2-04 | Route middleware protecting every page by role | ⬜ | Deny by default |
-| P2-05 | Authorisation guards on every API route | ⬜ | Including the content routes, all wide open today |
-| P2-22 | Rate limiting on login attempts | ⬜ | Student passwords will be weak and shared |
+| P2-02 | User creation, lookup and the role model | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12) · `lib/db/users.ts` |
+| P2-03 | Session handling — create, verify, destroy | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Signed cookie for edge routing + DB row for revocation |
+| P2-04 | Route middleware protecting every page by role | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12) · `middleware.ts`. Deny by default, no DB hit on the edge |
+| P2-05 | Authorisation guards on every API route | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). All 10 content routes were open; now super-admin only |
+| P2-22 | Rate limiting on login attempts | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Counted from `audit_log`, so it works across serverless instances |
 
 **End of day:** ________________________________________________
 
@@ -157,8 +157,8 @@ fixture data to test anything.
 | --- | --- | --- | --- |
 | P2-06 | Real login page — username + password, phone-first | ⬜ | Replaces the current fake form |
 | P2-07 | **Demo login panel — six one-click accounts** | ⬜ | `D-16`. Super Admin · School · Teacher · Student 1/2/3 |
-| P2-08 | Seed the demo school, class and six accounts | ⬜ | Students 1/2/3 → Explorer / Builder / Achiever |
-| P2-09 | Logout and session expiry | ⬜ | 🏁 Milestone: login works, roles enforced |
+| P2-08 | Seed the demo school, class and six accounts | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Refuses to run unless `DEMO_LOGIN=1` |
+| P2-09 | Logout and session expiry | ✅ | [PR #12](https://github.com/goappycodes/ai-lms/pull/12). Verified a copied cookie dies with the session |
 
 **End of day:** ________________________________________________
 
