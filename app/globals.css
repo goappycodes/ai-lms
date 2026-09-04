@@ -991,6 +991,25 @@ a {
 .table-teacher-classes {
   --cols: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) max-content;
 }
+/* Six cells: the sixth is the Manage action. */
+.table-schools {
+  --cols: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 0.7fr) minmax(0, 0.7fr)
+    max-content;
+  --table-min: 720px;
+}
+/* An archived school stays readable but stops competing with the live ones. */
+.tr-muted > span:not(:last-child) {
+  opacity: 0.55;
+}
+.panel.notice {
+  border-left: 3px solid var(--gold);
+}
+.panel.notice p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
 .table-teachers {
   --cols: minmax(0, 1.8fr) minmax(0, 1.4fr) minmax(0, 1.6fr) minmax(0, 1fr);
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseBody } from "@/lib/api";
 import { requireUser } from "@/lib/auth/guard";
-import { canManageClass } from "@/lib/auth/scope";
+import { canManageClass, schoolIsOpen } from "@/lib/auth/scope";
 import { ConflictError, createStudent, listClassStudents } from "@/lib/db/admin";
 import { getPool } from "@/lib/db/pg";
 import { audit } from "@/lib/db/users";
@@ -37,6 +37,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     [params.id]
   );
   if (!rows.length) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+
+  // Authority came from the class above; this is only about whether the
+  // school is still taking people. A teacher has no school-level authority,
+  // so canProvisionInSchool would wrongly refuse them here.
+  const open = await schoolIsOpen(rows[0].school_id);
+  if (!open.ok) return NextResponse.json({ error: open.error }, { status: open.status });
 
   try {
     const student = await createStudent({

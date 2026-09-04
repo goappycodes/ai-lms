@@ -7,6 +7,7 @@ import { homeFor } from "@/lib/auth/current";
 import {
   LOGIN_MAX_FAILURES,
   LOGIN_WINDOW_MINUTES,
+  accountUsable,
   audit,
   findUserByUsername,
   recentLoginFailures,
@@ -57,13 +58,23 @@ export async function POST(req: Request) {
     const storedHash = user?.password_hash ?? DUMMY_HASH;
     const ok = await verifyPassword(password, storedHash);
 
-    if (!user || !ok || user.status !== "active") {
+    if (!user || !ok || !accountUsable(user)) {
       await audit({
         action: "auth.login_failed",
         targetType: "username",
         targetId: username.toLowerCase(),
-        detail: { reason: !user ? "no_such_user" : !ok ? "bad_password" : "disabled" },
+        detail: {
+          reason: !user
+            ? "no_such_user"
+            : !ok
+              ? "bad_password"
+              : user.school_archived
+                ? "school_archived"
+                : "disabled",
+        },
       });
+      // Still the generic message: which of these it was is not the signed-out
+      // caller's business.
       return NextResponse.json({ error: GENERIC }, { status: 401 });
     }
 

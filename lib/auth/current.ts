@@ -1,6 +1,12 @@
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, verifySession, type Role } from "./token";
-import { findUserById, getLiveSession, toSafeUser, type SafeUser } from "@/lib/db/users";
+import {
+  accountUsable,
+  findUserById,
+  getLiveSession,
+  toSafeUser,
+  type SafeUser,
+} from "@/lib/db/users";
 
 /**
  * The signed-in user, or null.
@@ -23,7 +29,8 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   if (!session || session.user_id !== claims.uid) return null;
 
   const user = await findUserById(claims.uid);
-  if (!user || user.status !== "active") return null;
+  // Disabled, or belonging to a school that has been archived.
+  if (!user || !accountUsable(user)) return null;
 
   return toSafeUser(user);
 }

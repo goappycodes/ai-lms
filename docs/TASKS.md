@@ -5,7 +5,7 @@ Companion to [AI-VEDA-BUILD-BRIEF.md](./AI-VEDA-BUILD-BRIEF.md) (two pages) and
 [BRIEF-DETAIL.md](./BRIEF-DETAIL.md) (full) — task rows reference the
 decisions (`D-01`…`D-17`) recorded there.
 
-**131 tasks · 13 build days · 5 test days**
+**134 tasks · 13 build days · 5 test days**
 
 ---
 
@@ -171,17 +171,20 @@ fixture data to test anything.
 
 ## Day 6 · Tue 8 Sep — Schools, teachers, classes
 
-**Goal:** a super admin can create a school that logs in, and that school can build its own
-staff and classes.
+**Goal:** a super admin can create a school that logs in, open any school on the platform and
+manage it, and that school can build its own staff and classes.
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P2-10 | Schools list and CRUD | ✅ | `/admin/schools` — list with live counts, add form |
+| P2-10 | Schools list and CRUD | ✅ | List, create, open, edit and archive — all four verbs |
 | P2-11 | Creating a school provisions its login | ✅ | One form, both records — `D-14` |
 | P2-12 | Teachers CRUD — super admin and school | ✅ | Scoped: a school reaches only its own |
 | P2-13 | Classes CRUD and teacher assignment | ✅ | Assignment re-checks same-school in SQL |
 | P2-14 | Students — manual single add | ✅ | Bulk import lands Day 12 |
 | P2-15 | Enrolment: class level maps to course | ✅ | 5–7 Explorer · 8–10 Builder · 11–12 Achiever — derived, no enrolments table |
+| P2-23 | Open any school from the list and manage it | ✅ | `/admin/schools/[id]` renders the same dashboard the school sees |
+| P2-24 | Edit a school — name, district, code | ✅ | `COALESCE` could not clear a field; the SET list is built from the keys sent |
+| P2-25 | Archive a school, and restore it | ✅ | `0009_school_status.sql`. Blocks sign-in for everyone at it; restores exactly |
 
 **End of day:** ________________________________________________
 
@@ -472,4 +475,4 @@ school experience is what is being judged, so it is the last thing compromised.
 
 ---
 
-_AI Veda LMS · Day-by-day plan v4 · 131 tasks · Day 1 = Thu 3 Sep 2026_
+_AI Veda LMS · Day-by-day plan v4 · 134 tasks · Day 1 = Thu 3 Sep 2026_

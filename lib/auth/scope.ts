@@ -38,9 +38,35 @@ export function canManageSchool(actor: SafeUser, schoolId: string): Allow {
   return DENIED;
 }
 
+/**
+ * Is this school still taking new people?
+ *
+ * Separate from authority on purpose. A teacher has no authority over their
+ * school as a whole, but may still add a student to their own class — so the
+ * routes that authorise through a class ask this on its own, while the
+ * school-level ones get it bundled into canProvisionInSchool below.
+ *
+ * Anyone added to an archived school could not sign in — the gate reads the
+ * school's status — so accepting the row would only look like it worked.
+ */
+export async function schoolIsOpen(schoolId: string): Promise<Allow> {
+  const school = await one<{ status: string }>("SELECT status FROM schools WHERE id = $1", [
+    schoolId,
+  ]);
+  if (!school) return MISSING("School");
+  if (school.status === "archived") {
+    return { ok: false, status: 403, error: "This school is archived. Restore it first." };
+  }
+  return ALLOWED;
+}
+
 /** May the actor create or edit classes, teachers and students in this school? */
-export function canProvisionInSchool(actor: SafeUser, schoolId: string): Allow {
-  return canManageSchool(actor, schoolId);
+export async function canProvisionInSchool(
+  actor: SafeUser,
+  schoolId: string
+): Promise<Allow> {
+  const allowed = canManageSchool(actor, schoolId);
+  return allowed.ok ? schoolIsOpen(schoolId) : allowed;
 }
 
 /**
