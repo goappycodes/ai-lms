@@ -35,6 +35,10 @@ function homeFor(role: Role): string {
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  // A fetch() cannot use a redirect to an HTML login page: it follows it, gets
+  // 200 and a page of markup, and the caller reports "something went wrong"
+  // when the truth is the session ended. API routes get told so in JSON.
+  const isApi = pathname.startsWith("/api/");
 
   const claims = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 
@@ -47,10 +51,17 @@ export async function middleware(req: NextRequest) {
   }
 
   if (!claims) {
-    const url = new URL("/login", req.url);
-    // Come back to where they were headed once they sign in.
-    if (pathname !== "/") url.searchParams.set("next", pathname + search);
-    const res = NextResponse.redirect(url);
+    const res = isApi
+      ? NextResponse.json(
+          { error: "Your session has ended. Please sign in again." },
+          { status: 401 }
+        )
+      : (() => {
+          const url = new URL("/login", req.url);
+          // Come back to where they were headed once they sign in.
+          if (pathname !== "/") url.searchParams.set("next", pathname + search);
+          return NextResponse.redirect(url);
+        })();
     // A stale or forged cookie is cleared on the way out, so the browser stops
     // sending it and the redirect loop cannot happen.
     if (req.cookies.has(SESSION_COOKIE)) res.cookies.delete(SESSION_COOKIE);
@@ -59,6 +70,7 @@ export async function middleware(req: NextRequest) {
 
   const rule = RULES.find((r) => r.prefix.test(pathname));
   if (rule && !rule.roles.includes(claims.role)) {
+    if (isApi) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
     // Send them to their own home rather than a dead end.
     return NextResponse.redirect(new URL(homeFor(claims.role), req.url));
   }

@@ -148,6 +148,20 @@ check("a teacher cannot create a teacher",
 check("a teacher cannot create a class",
   (await call("/api/classes", { jar: teacherA, method: "POST", body: { name: "Z1", level: 7 } })).status, 403);
 
+// A stranger must be turned away before the body is even looked at, or the
+// 400 quietly describes the shape of a request they cannot make.
+console.log("\nAn unauthenticated caller gets 401, never a validation error");
+for (const [name, path, method, body] of [
+  ["assigning a teacher", `/api/classes/${clsA.data.id}/teachers`, "POST", { nonsense: true }],
+  ["unassigning a teacher", `/api/classes/${clsA.data.id}/teachers`, "DELETE", undefined],
+  ["adding a student", `/api/classes/${clsA.data.id}/students`, "POST", { nonsense: true }],
+  ["creating a class", "/api/classes", "POST", { nonsense: true }],
+  ["creating a teacher", "/api/teachers", "POST", { nonsense: true }],
+  ["creating a school", "/api/schools", "POST", { nonsense: true }],
+]) {
+  check(`${name} without signing in`, (await call(path, { method, body })).status, 401);
+}
+
 // ---------------------------------------------------------------- student --
 console.log("\nA student can provision nothing");
 const student = await signInDemo("demo.student1");
