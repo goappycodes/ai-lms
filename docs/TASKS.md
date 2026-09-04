@@ -21,7 +21,7 @@ decisions (`D-01`…`D-17`) recorded there.
 > **One decision is worth making early.** Bulk import generates a password per account, and a
 > 300-student file cannot show them once on a screen the way the Day 6 forms do. The default is a
 > single download at the end of the commit — plaintext passwords in a file on someone's laptop.
-> See [bulk import assumptions](#bulk-import--assumptions-in-force); needed before `P5-20`.
+> See [bulk import assumptions](#bulk-import-assumptions-in-force); needed before `P5-20`.
 
 > **Two weekends are working days.** Sep 5–6 and Sep 12–13 sit inside the build window;
 > Sep 19–20 sit in testing. If that is not the case, the plan loses four days and the descope
@@ -311,9 +311,9 @@ still missing — before content starts arriving.
 | P5-06 | Super admin: platform analytics | ⬜ | Replaces hardcoded numbers in the JSX |
 | P5-16 | Schools importer — super admin only | ⬜ | Creates each school **and** the login it signs in with (`D-14`) |
 | P5-17 | Teachers importer — the school column must match a listed school | ⬜ | Rows naming a school that is not already there are rejected, not created |
-| P5-18 | Classes importer — one row per section | ⬜ | A section **is** a class row: 9A, 9B, 9C. No `section` column exists — see [assumptions](#bulk-import--assumptions-in-force) |
+| P5-18 | Classes importer — one row per section | ⬜ | A section **is** a class row: 9A, 9B, 9C. No `section` column exists — see [assumptions](#bulk-import-assumptions-in-force) |
 | P5-19 | Students importer — school, class, student details | ⬜ | The three-sections case: the class column carries the section (`9A`). Run by a school or a teacher |
-| P5-20 | Credentials file for accounts made in bulk | ⬜ | 300 passwords cannot be "shown once" on a screen — see [assumptions](#bulk-import--assumptions-in-force) |
+| P5-20 | Credentials file for accounts made in bulk | ⬜ | 300 passwords cannot be "shown once" on a screen — see [assumptions](#bulk-import-assumptions-in-force) |
 | P5-21 | Re-running the same file must not duplicate anyone | ⬜ | Username is the identity; a second run reports "already exists", not a new row |
 | P5-14 | Studio: encode job status and retry for stranded encodes | ⬜ | Uses `encode_jobs` |
 | P6-06 | **Content load — 96 assets uploaded and encoded** | ⬜ | 🏁 Depends entirely on `C-07` |
@@ -419,7 +419,7 @@ Add a row the moment something stops. Empty is good; stale is not.
 
 ---
 
-## Bulk import — assumptions in force
+## Bulk import: assumptions in force
 
 Four import kinds, one engine. Every file carries the school it belongs to, because that column
 is what decides whether a row is allowed in at all.
