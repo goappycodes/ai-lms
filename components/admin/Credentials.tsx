@@ -35,7 +35,7 @@ export default function Credentials({
 
   return (
     <div className="credentials" role="status" aria-live="polite">
-      <strong>{t("provision.created")}</strong>
+      {/* No heading — the modal title already says "Account created". */}
       <p className="credentials-warn">{t("provision.once")}</p>
       <dl className="credentials-pair">
         <dt>{t("provision.username")}</dt>
@@ -49,10 +49,10 @@ export default function Credentials({
       </dl>
       <p className="muted tiny">{t("provision.mustChange")}</p>
       <div className="credentials-actions">
-        <button type="button" className="btn btn-small btn-ghost" onClick={copy}>
+        <button type="button" className="btn btn-ghost" onClick={copy}>
           {copied ? t("provision.copied") : t("provision.copy")}
         </button>
-        <button type="button" className="btn btn-small btn-primary" onClick={onDone}>
+        <button type="button" className="btn btn-primary" onClick={onDone}>
           {t("provision.done")}
         </button>
       </div>

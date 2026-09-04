@@ -94,8 +94,8 @@ export default async function SchoolPage() {
         {classes.length === 0 ? (
           <div className="panel center">
             <p className="muted">
-              No classes yet. Adding classes and importing a student roster arrives with the
-              school management screens.
+              No classes yet. Add one above — the course follows from the class level.
+              Importing a whole roster from a spreadsheet arrives later.
             </p>
           </div>
         ) : (
@@ -145,7 +145,9 @@ export default async function SchoolPage() {
         </div>
         {teachers.length === 0 ? (
           <div className="panel center">
-            <p className="muted">No teachers yet.</p>
+            <p className="muted">
+              No teachers yet. Add one above; they get a username and a password to pass on.
+            </p>
           </div>
         ) : (
           <div className="table">

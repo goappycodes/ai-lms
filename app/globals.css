@@ -1964,17 +1964,102 @@ a {
   flex-wrap: wrap;
 }
 
+/* ---------------------------------------------------------------- modal ---
+   Native <dialog>: the browser owns focus, Esc and the top layer. The dim
+   background sits on the dialog rather than ::backdrop so the fallback path
+   (an old WebView with no showModal) still dims the page behind it. */
+dialog.modal {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  background: rgba(20, 16, 22, 0.5);
+  overflow: hidden;
+}
+dialog.modal[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  /* Viewport units, not a percentage: a percentage height against the dialog's
+     box does not reliably constrain a centred flex item, and the card then
+     grows past the screen and takes its own scrollbar with it. dvh so mobile
+     browser chrome is accounted for. */
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: modal-in 0.16s ease-out;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-card {
+    animation: none;
+  }
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px 15px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.modal-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+}
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  margin: -6px -6px -6px 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.modal-close:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-warn .modal-card {
+  border: 1px solid var(--gold);
+}
+
 .provision-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  max-width: 420px;
-  padding: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  gap: 14px;
 }
 .provision-form .field input,
 .provision-form .field select {
@@ -2001,11 +2086,13 @@ a {
 }
 .provision-actions {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
 }
 .provision-actions .btn {
-  min-height: 44px;
+  min-height: 46px;
+  flex: 1;
+  justify-content: center;
 }
 
 /* The one time a password is visible. Deliberately loud, and it stays until
@@ -2013,14 +2100,7 @@ a {
 .credentials {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  max-width: 420px;
-  padding: 16px 18px;
-  background: var(--cream);
-  border: 1px solid var(--gold);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  gap: 12px;
 }
 .credentials-warn {
   margin: 0;
@@ -2052,10 +2132,39 @@ a {
   font-weight: 700;
   word-break: break-all;
 }
+.credentials-pair {
+  padding: 14px 16px;
+  background: var(--cream);
+  border: 1px solid var(--gold-soft);
+  border-radius: var(--radius-sm);
+}
 .credentials-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 2px;
 }
 .credentials-actions .btn {
-  min-height: 44px;
+  min-height: 46px;
+  flex: 1;
+  justify-content: center;
+}
+
+/* On a phone the card sits on the bottom edge, where thumbs are. */
+@media (max-width: 560px) {
+  dialog.modal {
+    padding: 0;
+  }
+  dialog.modal[open] {
+    align-items: flex-end;
+  }
+  .modal-card {
+    max-width: none;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  /* Clear the home indicator, so the last button is not half under it. */
+  .modal-body {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
 }
