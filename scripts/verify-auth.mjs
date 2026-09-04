@@ -193,5 +193,40 @@ console.log("\nLogin page and demo panel");
   check("an account outside the demo list is refused", bogus.status, 400);
 }
 
+console.log("\nNavigation and the account menu");
+{
+  const asRole = async (account) => {
+    const j = jar();
+    await req("/api/auth/demo-login", { jar: j, method: "POST", body: { account } });
+    return j;
+  };
+  const student = await asRole("demo.student1");
+  const teacher = await asRole("demo.teacher");
+  const admin = await asRole("demo.superadmin");
+  const html = async (j, path) =>
+    (await fetch(BASE + path, { headers: j.header })).text();
+
+  const s = await html(student, "/learning");
+  // The nav used to render a hard-coded name and initials for everyone.
+  check("the avatar shows the signed-in person", s.includes('title="Demo Student 1"'), true);
+  check("the hard-coded avatar is gone", s.includes('avatar">AN'), false);
+  check("the avatar is a real menu button", s.includes('aria-haspopup="menu"'), true);
+  check("it is labelled for screen readers", s.includes('aria-label="Account"'), true);
+  // A link that always bounces is worse than no link.
+  check("a student is not shown an Admin link", s.includes(">Admin<"), false);
+  check("a student is not shown a Teacher link", /nav-link[^>]*>Teacher</.test(s), false);
+  check("a student is shown My Learning", s.includes(">My Learning<"), true);
+
+  const t2 = await html(teacher, "/teacher");
+  check("a teacher is not shown an Admin link", t2.includes(">Admin<"), false);
+  check("a teacher is shown Teacher", /nav-link[^>]*>Teacher</.test(t2), true);
+
+  const a2 = await html(admin, "/admin");
+  check("a super admin is shown Admin", /nav-link[^>]*>Admin</.test(a2), true);
+
+  // Removed for the same reason as on the login page: it switched nothing.
+  check("the dead language toggle is gone", s.includes('aria-label="Language"'), false);
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail === 0 ? 0 : 1);
