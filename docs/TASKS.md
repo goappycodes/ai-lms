@@ -5,7 +5,7 @@ Companion to [AI-VEDA-BUILD-BRIEF.md](./AI-VEDA-BUILD-BRIEF.md) (two pages) and
 [BRIEF-DETAIL.md](./BRIEF-DETAIL.md) (full) — task rows reference the
 decisions (`D-01`…`D-17`) recorded there.
 
-**125 tasks · 13 build days · 5 test days**
+**131 tasks · 13 build days · 5 test days**
 
 ---
 
@@ -17,6 +17,11 @@ decisions (`D-01`…`D-17`) recorded there.
 | Video URLs **must be protected** | **New work**: `P6-13`…`P6-16`. Edge Worker, tokens, cache verification |
 | Offline download = **no** | No change. Stays out of scope |
 | Concurrency = **500, with heavy caching** | Database is comfortable. The caching instruction is the real one — `P3-09`, `P6-17` |
+
+> **One decision is worth making early.** Bulk import generates a password per account, and a
+> 300-student file cannot show them once on a screen the way the Day 6 forms do. The default is a
+> single download at the end of the commit — plaintext passwords in a file on someone's laptop.
+> See [bulk import assumptions](#bulk-import--assumptions-in-force); needed before `P5-20`.
 
 > **Two weekends are working days.** Sep 5–6 and Sep 12–13 sit inside the build window;
 > Sep 19–20 sit in testing. If that is not the case, the plan loses four days and the descope
@@ -268,6 +273,11 @@ still missing — before content starts arriving.
 | P5-01 | Teacher: class roster, % complete, last active | ⬜ | `D-08` |
 | P5-02 | Teacher: per-lesson view — finished, stalled, not started | ⬜ | Stalled is the genuinely useful signal |
 | P5-03 | Teacher: individual student detail | ⬜ | Shows watched-through vs ticked — `D-07` |
+| P5-07 | Spreadsheet parser and a downloadable template per import kind | ⬜ | New dependency — record why. `.xlsx` and `.csv` |
+| P5-08 | Resolve the school column against schools that already exist | ⬜ | `D-15`. An unlisted name rejects the row — an import never creates a school |
+| P5-09 | Import preview — matched, rejected, and the reason per row | ⬜ | **Nothing is written before confirmation** |
+| P5-10 | Commit the import and show a result summary | ⬜ | Partial success is the normal case: n added, n skipped, why |
+| P5-11 | Import role scoping | ⬜ | Super admin any school · school its own · teacher own classes only |
 | P5-12 | Studio: asset slot grid — video, worksheet, handout × EN/ML | ⬜ | Replaces the untyped PDF list |
 | P5-13 | Studio: per-lesson completeness and course filled/total | ⬜ | What makes 96 assets manageable |
 | P3-14 | Phone-first rebuild — lesson page, curriculum as a sheet | ⬜ | Not a squeezed sidebar |
@@ -283,6 +293,12 @@ still missing — before content starts arriving.
 
 **Goal:** the last features land and content starts loading. Nothing new after today.
 
+> ⚠️ **This day is over capacity.** It was already the heaviest at 15 tasks, and bulk import
+> grew from one roster importer to four (schools, teachers, classes, students) once every role
+> needed it. The engine moved to Day 11 to keep the dependency order sane, but the six rows
+> below still sit on the same day as the 96-asset content load. Either import starts on Day 10,
+> or it goes first down the [descope ladder](#if-we-fall-behind) — it is already #2 there.
+
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
 | P4-08 | Certificate eligibility rule | ⬜ | Confirm: does a manual tick count toward it? |
@@ -293,11 +309,12 @@ still missing — before content starts arriving.
 | P5-04 | School: whole-school progress | ⬜ | — |
 | P5-05 | School: manage its teachers and classes | ⬜ | — |
 | P5-06 | Super admin: platform analytics | ⬜ | Replaces hardcoded numbers in the JSX |
-| P5-07 | Spreadsheet parser and downloadable template | ⬜ | New dependency — record why |
-| P5-08 | Import: upload, parse, validate the school column | ⬜ | `D-15`. Unknown school → row rejected |
-| P5-09 | Import: preview — matched, rejected, reasons | ⬜ | **Nothing written before confirmation** |
-| P5-10 | Import: commit and result summary | ⬜ | — |
-| P5-11 | Import: role scoping | ⬜ | Super admin picks a school · school itself · teacher own class |
+| P5-16 | Schools importer — super admin only | ⬜ | Creates each school **and** the login it signs in with (`D-14`) |
+| P5-17 | Teachers importer — the school column must match a listed school | ⬜ | Rows naming a school that is not already there are rejected, not created |
+| P5-18 | Classes importer — one row per section | ⬜ | A section **is** a class row: 9A, 9B, 9C. No `section` column exists — see [assumptions](#bulk-import--assumptions-in-force) |
+| P5-19 | Students importer — school, class, student details | ⬜ | The three-sections case: the class column carries the section (`9A`). Run by a school or a teacher |
+| P5-20 | Credentials file for accounts made in bulk | ⬜ | 300 passwords cannot be "shown once" on a screen — see [assumptions](#bulk-import--assumptions-in-force) |
+| P5-21 | Re-running the same file must not duplicate anyone | ⬜ | Username is the identity; a second run reports "already exists", not a new row |
 | P5-14 | Studio: encode job status and retry for stranded encodes | ⬜ | Uses `encode_jobs` |
 | P6-06 | **Content load — 96 assets uploaded and encoded** | ⬜ | 🏁 Depends entirely on `C-07` |
 
@@ -343,7 +360,7 @@ still missing — before content starts arriving.
 | --- | --- | --- | --- |
 | P7-04 | Bilingual QA — every screen in Malayalam | ⬜ | Watch for overflow; ML runs longer than EN |
 | P7-05 | Permission testing — negative cases per role | ⬜ | Try to reach what you should not |
-| P7-06 | Roster import edge cases | ⬜ | Bad schools, duplicates, wrong columns, empty file |
+| P7-06 | Import edge cases, all four kinds | ⬜ | Unlisted school, unknown section, duplicate username, wrong columns, empty file, 5000 rows, a file that is not a spreadsheet |
 
 **End of day:** ________________________________________________
 
@@ -402,6 +419,42 @@ Add a row the moment something stops. Empty is good; stale is not.
 
 ---
 
+## Bulk import — assumptions in force
+
+Four import kinds, one engine. Every file carries the school it belongs to, because that column
+is what decides whether a row is allowed in at all.
+
+| Import | Who runs it | Columns the file must carry |
+| --- | --- | --- |
+| Schools | Super admin only | School name · district · code · sign-in username |
+| Teachers | Super admin, school | **School name** · full name · username · classes to assign (optional) |
+| Classes | Super admin, school | **School name** · class name · level (5–12) · academic year |
+| Students | Super admin, school, teacher | **School name** · **class** · full name · username |
+
+**The school column rule (`D-15`), which is the whole point of it:** a name that does not match a
+school already on the platform rejects that row. An import never creates a school as a side
+effect. New schools arrive one way only — the super admin, through the schools importer or the
+Add a school form. So a teacher file naming "GHSS Kochi" imports nothing for that school until
+"GHSS Kochi" exists.
+
+Nothing above is blocked on an answer. Each open question has a default already chosen, listed
+so it can be overruled rather than discovered later:
+
+| Question | Default in force | Overrule if |
+| --- | --- | --- |
+| Is a section its own field | **No.** A section is a class row — 9A, 9B and 9C are three rows in `classes`, which is what the schema does today. No migration | Sections need to be reported on separately from classes |
+| A student row names a class that does not exist | **Reject the row**, same rule as an unknown school | Schools would rather classes appear from the roster file |
+| A username in the file already exists | **Skip it**, report "already exists", import the rest | A whole file should fail if any row collides |
+| A row's name differs from the existing account | **Do not update.** An import adds; it does not edit | Import should double as a correction tool |
+| How do 300 generated passwords reach 300 students | **One download, offered once at the end of the commit, never stored** | A different handover is wanted — this one puts plaintext passwords in a file on someone's laptop |
+| A teacher row names a class that does not exist | **Import the teacher, skip the assignment**, say so | The row should fail outright |
+| How large a file | **5,000 rows**, above which it is rejected with a message | Kerala rollout needs bigger single files |
+
+The password question is the one worth a decision before `P5-20` is built. Everything else can
+be changed after the fact without a migration.
+
+---
+
 ## If we fall behind
 
 Cut in this order — least damage first. Agree it now, not at midnight on Day 12.
@@ -409,7 +462,7 @@ Cut in this order — least damage first. Agree it now, not at midnight on Day 1
 | Order | What goes | Tasks | Cost |
 | --- | --- | --- | --- |
 | 1 | Admin analytics dashboard | `P5-06` | Firebase covers the numbers meanwhile |
-| 2 | Excel roster import | `P5-07`…`P5-11` | Accounts made by hand — an afternoon for a few hundred |
+| 2 | Excel bulk import | `P5-07`…`P5-11`, `P5-16`…`P5-21` | Accounts made by hand through the Day 6 screens — an afternoon for a few hundred, and it is the biggest single block left |
 | 3 | School-level login | `P2-11`, `P5-04`, `P5-05` | Super admin provisions every school. Fine for a pilot, not past it |
 | 4 | Certificate PDF | `P4-11` | Certificate shown as a web page instead |
 | 5 | Malayalam content | `C-03`…`C-06`, `P3-03` | Launch English-only, load ML as it lands. Most damaging — and the only lever that really moves the date |
@@ -419,4 +472,4 @@ school experience is what is being judged, so it is the last thing compromised.
 
 ---
 
-_AI Veda LMS · Day-by-day plan v3 · 125 tasks · Day 1 = Thu 3 Sep 2026_
+_AI Veda LMS · Day-by-day plan v4 · 131 tasks · Day 1 = Thu 3 Sep 2026_
