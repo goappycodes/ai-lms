@@ -26,6 +26,7 @@ function linksFor(role: Role): { href: string; label: string }[] {
 
 export default async function TopNav() {
   const user = await getCurrentUser();
+  const links = user ? linksFor(user.role) : [];
 
   return (
     <header className="topnav">
@@ -37,12 +38,13 @@ export default async function TopNav() {
           <span className="brand-name">AI Veda</span>
         </Link>
 
-        {user && <NavLinks links={linksFor(user.role)} />}
+        {user && <NavLinks links={links} />}
 
         <div className="topnav-right">
           {user && (
             <UserMenu
               user={{ full_name: user.full_name, role: user.role, username: user.username }}
+              links={links}
             />
           )}
         </div>

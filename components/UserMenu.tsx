@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { t, type StringKey } from "@/lib/i18n/strings";
 
@@ -19,7 +20,17 @@ function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-export default function UserMenu({ user }: { user: MenuUser }) {
+export default function UserMenu({
+  user,
+  links = [],
+}: {
+  user: MenuUser;
+  /** The same destinations as the top nav. Below 560px the nav bar is hidden,
+   *  so without these there is no way to move around the app on a phone at
+   *  all — the menu becomes the navigation. Hidden by CSS on wider screens,
+   *  where the bar already shows them. */
+  links?: { href: string; label: string }[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -79,6 +90,22 @@ export default function UserMenu({ user }: { user: MenuUser }) {
             <span className="muted tiny">{t(`role.${user.role}` as StringKey)}</span>
             <span className="muted tiny">{user.username}</span>
           </div>
+          {links.length > 0 && (
+            <div className="user-menu-nav">
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  role="menuitem"
+                  className="user-menu-item"
+                  onClick={() => setOpen(false)}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          )}
+
           <button
             type="button"
             role="menuitem"

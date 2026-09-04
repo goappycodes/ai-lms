@@ -297,5 +297,28 @@ console.log("\nIdentity on screen is the person signed in");
   check("...and their own class", p2.includes("Class Demo 9A"), true);
 }
 
+console.log("\nLayout regressions this project has already hit once");
+{
+  const login = await (await fetch(BASE + "/login")).text();
+  // The footer was hidden here; it is wanted for now.
+  check("the login page still has the site footer", login.includes("site-footer"), true);
+
+  // Read the stylesheet the page actually links to, rather than guessing a path.
+  const href = (login.match(/href="(\/_next\/static\/css\/[^"]+)"/) || [])[1];
+  const css = href ? await (await fetch(BASE + href.replace(/&amp;/g, "&"))).text() : "";
+  if (!css) {
+    console.log("  · stylesheet not found, skipping the CSS assertions");
+  } else {
+    // Tables used to drop their 4th and 5th cell below 900px, so a school
+    // admin on a phone could not see who taught a class — the data was gone
+    // with nothing to say so. They scroll sideways instead now.
+    check("tables no longer hide their last columns", /nth-child\(4\)/.test(css), false);
+    check("tables scroll sideways instead", /overflow-x:\s*auto/.test(css), true);
+    check("rows keep a readable minimum width", /min-width:\s*560px/.test(css), true);
+    // Below 560px the nav bar is hidden, so the account menu carries the links.
+    check("the account menu carries the nav on small screens", /user-menu-nav/.test(css), true);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail === 0 ? 0 : 1);

@@ -1051,6 +1051,33 @@ a {
   gap: 40px;
   flex-wrap: wrap;
 }
+@media (max-width: 700px) {
+  /* On a phone the footer ran to three screens. Tighter padding, two columns
+     of links instead of a stack, and smaller type. */
+  .footer-inner {
+    padding: 28px var(--page-x) 22px;
+    gap: 22px;
+  }
+  .footer-tag {
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
+  .footer-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 18px;
+    width: 100%;
+  }
+  .footer-col {
+    gap: 7px;
+  }
+  .footer-col a {
+    font-size: 12.5px;
+  }
+  .site-footer {
+    margin-top: 32px;
+  }
+}
 .footer-brand {
   max-width: 320px;
 }
@@ -1110,6 +1137,20 @@ a {
 .footer-bar .dot {
   opacity: 0.4;
 }
+@media (max-width: 700px) {
+  .footer-bar {
+    /* Stacked and centred. Wrapped, the separators ended up dangling at the
+       end of a line with nothing after them. */
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px var(--page-x);
+    font-size: 11.5px;
+    text-align: center;
+  }
+  .footer-bar .dot {
+    display: none;
+  }
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
@@ -1138,12 +1179,15 @@ a {
   .stat-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .tr {
-    grid-template-columns: 1.6fr 0.7fr 1fr;
+  /* Tables scroll sideways rather than dropping columns. Hiding the 4th and
+     5th cell meant a school admin on a phone could not see who taught a class
+     or which year it was — the data was simply gone, with nothing to say so. */
+  .table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  .tr span:nth-child(4),
-  .tr span:nth-child(5) {
-    display: none;
+  .tr {
+    min-width: 560px;
   }
 }
 @media (max-width: 560px) {
@@ -1616,15 +1660,6 @@ a {
   }
 }
 
-/* The sign-in page has no use for the site footer: every link in it points at
-   a page that would bounce a signed-out visitor straight back here, and on a
-   phone it doubles the height of the document. Hidden with :has() rather than
-   restructuring the layout — where :has() is unsupported the footer simply
-   shows, which is the behaviour we have today. */
-body:has(main.auth) .site-footer {
-  display: none;
-}
-
 /* --- Sign in ------------------------------------------------------------- */
 /* Phone first. Most students reach this on a shared Android phone, so the
    single column is the real layout and the two-column desktop version is the
@@ -1877,5 +1912,23 @@ body:has(main.auth) .site-footer {
   .user-menu-panel {
     right: -4px;
     min-width: min(240px, calc(100vw - 32px));
+  }
+}
+
+/* The nav bar is hidden below 560px, so the account menu carries the same
+   links there. Above that the bar already shows them and repeating them in
+   the menu would be noise. */
+.user-menu-nav {
+  display: none;
+}
+@media (max-width: 560px) {
+  .user-menu-nav {
+    display: block;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+  .user-menu-nav .user-menu-item {
+    text-decoration: none;
   }
 }
