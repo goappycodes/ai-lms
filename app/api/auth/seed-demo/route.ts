@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db/pg";
 import { hashPassword } from "@/lib/auth/password";
 import { id } from "@/lib/ids";
+import { demoLoginEnabled } from "@/lib/auth/demo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ const CLASSES = {
 } as const;
 
 export async function POST() {
-  if (process.env.DEMO_LOGIN !== "1") {
+  if (!demoLoginEnabled()) {
     return NextResponse.json(
       { error: "Demo accounts are disabled. Set DEMO_LOGIN=1 to enable them." },
       { status: 403 }

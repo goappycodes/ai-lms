@@ -168,5 +168,30 @@ console.log("\nTiming — can a username be discovered by how long the answer ta
   check("the two are indistinguishable (within 80ms)", delta < 80, true);
 }
 
+console.log("\nLogin page and demo panel");
+{
+  const html = await (await fetch(BASE + "/login")).text();
+  check("the sign-in form renders", html.includes('name="username"'), true);
+  check("the demo panel is shown when enabled", html.includes("Demo accounts"), true);
+  check("students are told how to recover a password", html.includes("Ask your teacher"), true);
+  // The demo password must never reach the browser: it is only known to the
+  // server, so it cannot be lifted from the bundle and tried elsewhere.
+  check("the demo password is not in the page", html.includes("demo-aiveda-2026"), false);
+
+  for (const [account, home] of [
+    ["demo.superadmin", "/admin"],
+    ["demo.school", "/teacher"],
+    ["demo.teacher", "/teacher"],
+    ["demo.student1", "/learning"],
+    ["demo.student2", "/learning"],
+    ["demo.student3", "/learning"],
+  ]) {
+    const r = await req("/api/auth/demo-login", { method: "POST", body: { account } });
+    check(`${account} signs in and routes to ${home}`, (await r.json())?.redirect, home);
+  }
+  const bogus = await req("/api/auth/demo-login", { method: "POST", body: { account: "demo.hacker" } });
+  check("an account outside the demo list is refused", bogus.status, 400);
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail === 0 ? 0 : 1);

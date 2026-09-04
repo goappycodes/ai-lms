@@ -1,13 +1,16 @@
-"use client";
+import { Suspense } from "react";
+import LoginForm from "@/components/LoginForm";
+import { t } from "@/lib/i18n/strings";
+import { demoLoginEnabled } from "@/lib/auth/demo";
 
-import Link from "next/link";
-import { useState } from "react";
+export const dynamic = "force-dynamic";
 
-type Role = "student" | "teacher" | "admin";
-
-export default function Login() {
-  const [role, setRole] = useState<Role>("student");
-  const dest = role === "student" ? "/learning" : role === "teacher" ? "/teacher" : "/admin";
+// The language toggle that used to sit here has been removed rather than left
+// decorative: it switched nothing. It returns in P3-05, once the catalogue has
+// real Malayalam in it (P3-03). A control that looks like it works and does
+// not is worse than no control.
+export default function LoginPage() {
+  const demoEnabled = demoLoginEnabled();
 
   return (
     <main className="auth">
@@ -19,41 +22,22 @@ export default function Login() {
           <span className="brand-name">AI Veda</span>
         </div>
         <p className="muted center auth-cobrand">
-          Powered by <span className="nexis">N<span className="e">E</span>XIS</span> · Government of Kerala
+          Powered by{" "}
+          <span className="nexis">
+            N<span className="e">E</span>XIS
+          </span>{" "}
+          · Government of Kerala
         </p>
 
-        <div className="role-tabs">
-          {(["student", "teacher", "admin"] as Role[]).map((r) => (
-            <button key={r} className={role === r ? "on" : ""} onClick={() => setRole(r)}>
-              {r[0].toUpperCase() + r.slice(1)}
-            </button>
-          ))}
+        <div className="auth-head">
+          <h1>{t("login.title")}</h1>
+          <p className="muted">{t("login.subtitle")}</p>
         </div>
 
-        <label className="field">
-          <span>{role === "student" ? "Student ID / Google account" : "Email"}</span>
-          <input placeholder={role === "student" ? "KL-6B-023" : "you@school.kerala.gov.in"} />
-        </label>
-        <label className="field">
-          <span>Password / OTP</span>
-          <input type="password" placeholder="••••••" />
-        </label>
-
-        <Link className="btn btn-primary block" href={dest}>
-          Continue
-        </Link>
-
-        <div className="lang-row">
-          <span className="muted">Language</span>
-          <div className="lang-toggle">
-            <button className="on">English</button>
-            <button>മലയാളം</button>
-          </div>
-        </div>
-
-        <p className="tiny muted center">
-          Under-13 (Explorer) sign-in is teacher-provisioned — see brief §9.
-        </p>
+        {/* useSearchParams needs a Suspense boundary at build time. */}
+        <Suspense fallback={null}>
+          <LoginForm demoEnabled={demoEnabled} />
+        </Suspense>
       </div>
     </main>
   );
