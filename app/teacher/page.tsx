@@ -2,8 +2,11 @@ import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import { getTrack } from "@/lib/data";
 import { completed } from "@/lib/progress";
+import { requirePage } from "@/lib/auth/guard";
 
-export default function TeacherPage() {
+export default async function TeacherPage() {
+  await requirePage("super_admin", "school", "teacher");
+
   const track = getTrack("explorer")!;
   const done = new Set(completed.explorer ?? []);
 

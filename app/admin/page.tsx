@@ -1,8 +1,11 @@
 import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import { tracks } from "@/lib/data";
+import { requirePage } from "@/lib/auth/guard";
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  await requirePage("super_admin");
+
   return (
     <>
       <TopNav />

@@ -2,11 +2,15 @@ import { bad, notFound, ok, parseBody, serverError } from "@/lib/api";
 import { createLesson, getCourse, listLessons } from "@/lib/db/repo";
 import { lessonCreate } from "@/lib/validation";
 import { localeFrom } from "@/lib/locale";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const locale = localeFrom(req);
     if (!(await getCourse(params.id, locale))) return notFound("course not found");
@@ -20,6 +24,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // one — attachLesson adds the same lesson to a second course (Builder ↔
 // Achiever share eight of them).
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const locale = localeFrom(req);
     if (!(await getCourse(params.id, locale))) return notFound("course not found");

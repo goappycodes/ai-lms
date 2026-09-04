@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import TopNav from "@/components/TopNav";
 import { getTrack } from "@/lib/data";
 import { pct, student } from "@/lib/progress";
+import { requirePage } from "@/lib/auth/guard";
 
-export default function CertificatePage({ params }: { params: { trackId: string } }) {
+export default async function CertificatePage({ params }: { params: { trackId: string } }) {
+  await requirePage();
+
   const track = getTrack(params.trackId);
   if (!track) notFound();
 

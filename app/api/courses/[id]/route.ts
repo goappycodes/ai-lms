@@ -2,11 +2,15 @@ import { NextRequest } from "next/server";
 import { bad, notFound, ok, parseBody, serverError } from "@/lib/api";
 import { deleteCourse, getCourse, getCourseTree, updateCourse } from "@/lib/db/repo";
 import { courseUpdate } from "@/lib/validation";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const tree = req.nextUrl.searchParams.get("tree");
     if (tree) {
@@ -21,6 +25,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const parsed = await parseBody(req, courseUpdate);
     if ("error" in parsed) return parsed.error;
@@ -32,6 +39,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     return (await deleteCourse(params.id)) ? ok({ deleted: true }) : notFound("course not found");
   } catch (e) {
