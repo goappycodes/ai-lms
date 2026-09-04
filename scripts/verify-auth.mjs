@@ -165,12 +165,25 @@ console.log("\nTiming — can a username be discovered by how long the answer ta
     await login(username, "definitely-wrong");
     return Date.now() - t0;
   };
-  // Warm the connection so the first call does not carry pool setup.
+  const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+
+  // Warm the connection so pool setup does not land in the first sample.
   await time(`warmup.${Math.random().toString(36).slice(2, 8)}`);
-  const real = await time("demo.superadmin");
-  const ghost = await time(`nobody.${Math.random().toString(36).slice(2, 10)}`);
-  const delta = Math.abs(real - ghost);
-  console.log(`    real user ${real}ms · unknown user ${ghost}ms · difference ${delta}ms`);
+
+  // Several samples, interleaved and compared by median. A single pair is at
+  // the mercy of whatever else is touching the database at that moment — this
+  // check failed once while the schema suite was running alongside it, which
+  // is a flaky test rather than a real finding.
+  const real = [];
+  const ghost = [];
+  for (let i = 0; i < 3; i++) {
+    real.push(await time("demo.superadmin"));
+    ghost.push(await time(`nobody.${Math.random().toString(36).slice(2, 10)}`));
+  }
+  const r = median(real);
+  const g = median(ghost);
+  const delta = Math.abs(r - g);
+  console.log(`    real user ${r}ms · unknown user ${g}ms · difference ${delta}ms  (medians of 3)`);
   check("the two are indistinguishable (within 80ms)", delta < 80, true);
 }
 

@@ -1616,29 +1616,73 @@ a {
   }
 }
 
+/* The sign-in page has no use for the site footer: every link in it points at
+   a page that would bounce a signed-out visitor straight back here, and on a
+   phone it doubles the height of the document. Hidden with :has() rather than
+   restructuring the layout — where :has() is unsupported the footer simply
+   shows, which is the behaviour we have today. */
+body:has(main.auth) .site-footer {
+  display: none;
+}
+
 /* --- Sign in ------------------------------------------------------------- */
-/* Phone-first: one column, full-width controls, tap targets no smaller than
-   44px. Most students reach this on a shared Android phone. */
+/* Phone first. Most students reach this on a shared Android phone, so the
+   single column is the real layout and the two-column desktop version is the
+   enhancement, not the other way round. */
+.auth {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  /* Tight side padding: at 375px, 24px each side left the card cramped. */
+  padding: 24px 14px 32px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 26px 20px;
+  display: grid;
+  gap: 18px;
+}
+.auth-brand {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+}
+.auth-brand .auth-cobrand {
+  /* Balanced so a wrap does not leave "Kerala" alone on its own line. */
+  text-wrap: balance;
+  max-width: 30ch;
+  margin-top: 0;
+}
 .auth-head {
   text-align: center;
-  margin-top: 2px;
+  margin-bottom: 14px;
 }
 .auth-head h1 {
-  font-size: 22px;
+  font-size: 21px;
   margin: 0 0 2px;
 }
 .auth-head .muted {
   font-size: 13px;
   margin: 0;
+  text-wrap: balance;
+}
+.auth-main {
+  display: flex;
+  flex-direction: column;
 }
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 13px;
 }
 .auth-form .field input {
-  /* 16px stops iOS Safari zooming in when the field is focused, which on a
-     small screen throws the whole layout sideways. */
+  /* 16px stops iOS Safari zooming in on focus, which throws the layout
+     sideways on a small screen. */
   font-size: 16px;
   padding: 13px 14px;
   min-height: 46px;
@@ -1646,6 +1690,7 @@ a {
 .auth-form .btn.block {
   min-height: 48px;
   font-size: 15px;
+  margin-top: 3px;
 }
 .auth-form .btn[disabled] {
   opacity: 0.6;
@@ -1655,24 +1700,27 @@ a {
 .auth-help {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 13px 15px;
+  gap: 2px;
+  margin-top: 14px;
+  padding: 12px 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.5;
 }
 .auth-help strong {
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
-.demo-panel {
-  border-top: 1px dashed var(--border-strong);
-  padding-top: 16px;
+/* Demo accounts. A separate block on a phone, a second column on a wide
+   screen — see the media query at the end. */
+.auth-side {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 16px;
 }
 .demo-head {
   display: flex;
@@ -1684,16 +1732,71 @@ a {
 }
 .demo-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 7px;
+  /* Two columns even at 375px: the buttons carry two short lines rather than
+     one long phrase, so they fit without wrapping mid-word. */
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
-.demo-grid .btn {
-  min-height: 44px;
+.demo-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
+  gap: 1px;
+  min-height: 48px;
+  padding: 8px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
 }
-@media (min-width: 420px) {
-  .demo-grid {
-    grid-template-columns: 1fr 1fr;
+.demo-btn:hover:not(:disabled) {
+  border-color: var(--crimson);
+  background: var(--surface-2);
+}
+.demo-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.demo-btn-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+.demo-btn-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+/* Side by side once there is room for two readable columns. Below this the
+   card would have to shrink each column past a comfortable line length. */
+@media (min-width: 860px) {
+  .auth-card.has-demo {
+    max-width: 780px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+    align-items: start;
+    column-gap: 34px;
+    padding: 32px 34px;
+  }
+  .auth-card.has-demo .auth-brand {
+    grid-column: 1 / -1;
+  }
+  .auth-card.has-demo .auth-side {
+    /* A vertical rule instead of a horizontal one, and no top padding, so the
+       two columns start on the same line. */
+    border-top: 0;
+    border-left: 1px dashed var(--border-strong);
+    padding-top: 0;
+    padding-left: 26px;
+    height: 100%;
+  }
+  .auth-card.has-demo .demo-grid {
+    grid-template-columns: 1fr;
   }
 }
 
