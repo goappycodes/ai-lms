@@ -7,11 +7,15 @@ import { uploadPathFor } from "@/lib/video/pipeline";
 import { startEncodeJob } from "@/lib/video/jobs";
 import { findBinary } from "@/lib/video/ffmpeg";
 import { asLocale, localeFrom } from "@/lib/locale";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
     return ok((await getLatestVideo(params.id, localeFrom(req))) ?? null);
@@ -24,6 +28,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // fallback). One video per lesson per language: Malayalam is a separate
 // recording, not a second audio track (Q1).
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
 

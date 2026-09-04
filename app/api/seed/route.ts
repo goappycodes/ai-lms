@@ -9,6 +9,7 @@ import {
   upsertCertificateTemplate,
 } from "@/lib/db/repo";
 import { getPool } from "@/lib/db/pg";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,9 @@ export const dynamic = "force-dynamic";
 // content is the same lesson, which is exactly what the shared-lesson model in
 // docs/SCHEMA.md means. Creating them twice would double the video production.
 export async function POST() {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const created: string[] = [];
     const skipped: string[] = [];

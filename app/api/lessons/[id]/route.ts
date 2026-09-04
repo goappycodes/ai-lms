@@ -11,11 +11,15 @@ import {
 } from "@/lib/db/repo";
 import { lessonUpdate } from "@/lib/validation";
 import { localeFrom } from "@/lib/locale";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const locale = localeFrom(req);
     const lesson = await getLesson(params.id, undefined, locale);
@@ -39,6 +43,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     const parsed = await parseBody(req, lessonUpdate);
     if ("error" in parsed) return parsed.error;
@@ -55,6 +62,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     return (await deleteLesson(params.id)) ? ok({ deleted: true }) : notFound("lesson not found");
   } catch (e) {

@@ -5,11 +5,14 @@ import SeedButton from "@/components/studio/SeedButton";
 import ConfigNotice from "@/components/studio/ConfigNotice";
 import { dbConfigured } from "@/lib/env";
 import { listCoursesWithCounts } from "@/lib/db/repo";
+import { requirePage } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function StudioHome() {
+  await requirePage("super_admin");
+
   if (!dbConfigured()) return <ConfigNotice />;
 
   let cards;

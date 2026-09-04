@@ -5,12 +5,15 @@ import CurriculumSidebar from "@/components/CurriculumSidebar";
 import VideoStage from "@/components/VideoStage";
 import SessionResources from "@/components/SessionResources";
 import { getTrack } from "@/lib/data";
+import { requirePage } from "@/lib/auth/guard";
 
-export default function PlayerPage({
+export default async function PlayerPage({
   params,
 }: {
   params: { trackId: string; sessionId: string };
 }) {
+  await requirePage();
+
   const track = getTrack(params.trackId);
   if (!track) notFound();
 

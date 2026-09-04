@@ -7,6 +7,7 @@ import { id } from "@/lib/ids";
 import { r2Configured } from "@/lib/env";
 import { putSingle } from "@/lib/video/r2";
 import { asLocale, localeFrom } from "@/lib/locale";
+import { requireContentAdmin } from "@/lib/auth/guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
 const KINDS = ["worksheet", "handout"] as const;
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
     const url = new URL(req.url);
@@ -25,6 +29,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const g = await requireContentAdmin();
+  if ("response" in g) return g.response;
+
   try {
     if (!(await getLesson(params.id))) return notFound("lesson not found");
     const form = await req.formData();

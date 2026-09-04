@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import { getTrack } from "@/lib/data";
 import { currentSession } from "@/lib/progress";
+import { requirePage } from "@/lib/auth/guard";
 
 // Opening a track jumps to the resume point (or session 1).
-export default function TrackIndex({ params }: { params: { trackId: string } }) {
+export default async function TrackIndex({ params }: { params: { trackId: string } }) {
+  await requirePage();
+
   const track = getTrack(params.trackId);
   if (!track) redirect("/learning");
 
