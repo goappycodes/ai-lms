@@ -1615,3 +1615,84 @@ a {
     align-items: center;
   }
 }
+
+/* --- Sign in ------------------------------------------------------------- */
+/* Phone-first: one column, full-width controls, tap targets no smaller than
+   44px. Most students reach this on a shared Android phone. */
+.auth-head {
+  text-align: center;
+  margin-top: 2px;
+}
+.auth-head h1 {
+  font-size: 22px;
+  margin: 0 0 2px;
+}
+.auth-head .muted {
+  font-size: 13px;
+  margin: 0;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.auth-form .field input {
+  /* 16px stops iOS Safari zooming in when the field is focused, which on a
+     small screen throws the whole layout sideways. */
+  font-size: 16px;
+  padding: 13px 14px;
+  min-height: 46px;
+}
+.auth-form .btn.block {
+  min-height: 48px;
+  font-size: 15px;
+}
+.auth-form .btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.auth-help {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 13px 15px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.auth-help strong {
+  font-size: 13px;
+}
+
+.demo-panel {
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.demo-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.demo-head strong {
+  font-size: 13px;
+}
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+.demo-grid .btn {
+  min-height: 44px;
+  justify-content: center;
+}
+@media (min-width: 420px) {
+  .demo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
