@@ -1,54 +1,49 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { student } from "@/lib/progress";
+import NavLinks from "@/components/NavLinks";
+import UserMenu from "@/components/UserMenu";
+import { getCurrentUser, homeFor } from "@/lib/auth/current";
+import { t } from "@/lib/i18n/strings";
+import type { Role } from "@/lib/auth/token";
 
-const links = [
-  { href: "/learning", label: "My Learning" },
-  { href: "/teacher", label: "Teacher" },
-  { href: "/admin", label: "Admin" },
-];
+// A server component so the nav shows who is actually signed in, rather than a
+// hard-coded name. The two interactive pieces are client components.
+//
+// The EN/ML toggle that used to sit here is gone for the same reason it went
+// from the login page: it switched nothing. It returns in P3-05, once the
+// catalogue has real Malayalam.
 
-export default function TopNav() {
-  const path = usePathname() || "";
-  const [lang, setLang] = useState<"EN" | "ML">("EN");
+/** Only the destinations this role can actually reach — the middleware would
+ *  bounce the others, and a link that always bounces is worse than no link. */
+function linksFor(role: Role): { href: string; label: string }[] {
+  const all = [
+    { href: "/learning", label: t("nav.learning"), roles: ["super_admin", "school", "teacher", "student"] },
+    { href: "/teacher", label: t("nav.teacher"), roles: ["super_admin", "school", "teacher"] },
+    { href: "/admin", label: t("nav.admin"), roles: ["super_admin"] },
+  ];
+  return all.filter((l) => l.roles.includes(role)).map(({ href, label }) => ({ href, label }));
+}
+
+export default async function TopNav() {
+  const user = await getCurrentUser();
 
   return (
     <header className="topnav">
       <div className="topnav-inner">
-        <Link href="/learning" className="brand">
+        <Link href={user ? homeFor(user.role) : "/login"} className="brand">
           <span className="brand-mark">
             <span className="mark-glyph">व</span>
           </span>
           <span className="brand-name">AI Veda</span>
         </Link>
 
-        <nav className="nav-links">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={path.startsWith(l.href) ? "nav-link active" : "nav-link"}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        {user && <NavLinks links={linksFor(user.role)} />}
 
         <div className="topnav-right">
-          <div className="lang-toggle" role="group" aria-label="Language">
-            <button className={lang === "EN" ? "on" : ""} onClick={() => setLang("EN")}>
-              EN
-            </button>
-            <button className={lang === "ML" ? "on" : ""} onClick={() => setLang("ML")}>
-              ML
-            </button>
-          </div>
-          <div className="avatar" title={student.name}>
-            {student.initials}
-          </div>
+          {user && (
+            <UserMenu
+              user={{ full_name: user.full_name, role: user.role, username: user.username }}
+            />
+          )}
         </div>
       </div>
     </header>

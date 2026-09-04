@@ -35,6 +35,18 @@ const en = {
   "login.demo.student1": "Student 1 · Explorer",
   "login.demo.student2": "Student 2 · Builder",
   "login.demo.student3": "Student 3 · Achiever",
+
+  "nav.learning": "My Learning",
+  "nav.teacher": "Teacher",
+  "nav.admin": "Admin",
+  "nav.account": "Account",
+  "nav.signout": "Sign out",
+  "nav.signingout": "Signing out…",
+
+  "role.super_admin": "Super admin",
+  "role.school": "School",
+  "role.teacher": "Teacher",
+  "role.student": "Student",
 } as const;
 
 export type StringKey = keyof typeof en;
