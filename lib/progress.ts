@@ -1,14 +1,14 @@
 import { TrackId } from "./types";
 
-// Mock per-student state for the scaffold. Replace with a real API / DB later.
-export const student = {
-  name: "Aparna Nair",
-  school: "GHSS Kochi",
-  class: "6B",
-  initials: "AN",
-};
-
-export const enrolledTrack: TrackId = "explorer";
+// SAMPLE PROGRESS ONLY.
+//
+// Identity, school, class and which course someone is enrolled in are now read
+// from the database — see lib/db/org.ts. What remains here is watch progress,
+// which has no real rows yet: lesson_progress is empty until the player writes
+// to it (P4-02) and the student read path lands (P3-06..P3-08).
+//
+// Anything that still imports this is showing sample numbers, and the screens
+// that do say so.
 
 // Completed session numbers per track.
 export const completed: Record<TrackId, number[]> = {

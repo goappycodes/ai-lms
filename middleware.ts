@@ -19,6 +19,7 @@ const PUBLIC = [/^\/login$/, /^\/api\/auth\//, /^\/monitoring/];
 /** First match wins, so put the most specific prefixes first. */
 const RULES: { prefix: RegExp; roles: Role[] }[] = [
   { prefix: /^\/admin/, roles: ["super_admin"] },
+  { prefix: /^\/school/, roles: ["super_admin", "school"] },
   { prefix: /^\/teacher/, roles: ["super_admin", "school", "teacher"] },
   { prefix: /^\/learning/, roles: ["super_admin", "school", "teacher", "student"] },
   { prefix: /^\/learn/, roles: ["super_admin", "school", "teacher", "student"] },
@@ -28,6 +29,7 @@ const RULES: { prefix: RegExp; roles: Role[] }[] = [
 function homeFor(role: Role): string {
   if (role === "super_admin") return "/admin";
   if (role === "student") return "/learning";
+  if (role === "school") return "/school";
   return "/teacher";
 }
 

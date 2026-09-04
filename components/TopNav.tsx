@@ -17,6 +17,7 @@ import type { Role } from "@/lib/auth/token";
 function linksFor(role: Role): { href: string; label: string }[] {
   const all = [
     { href: "/learning", label: t("nav.learning"), roles: ["super_admin", "school", "teacher", "student"] },
+    { href: "/school", label: t("nav.school"), roles: ["super_admin", "school"] },
     { href: "/teacher", label: t("nav.teacher"), roles: ["super_admin", "school", "teacher"] },
     { href: "/admin", label: t("nav.admin"), roles: ["super_admin"] },
   ];

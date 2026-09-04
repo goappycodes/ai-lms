@@ -37,6 +37,7 @@ const en = {
   "login.demo.student3": "Student 3 · Achiever",
 
   "nav.learning": "My Learning",
+  "nav.school": "School",
   "nav.teacher": "Teacher",
   "nav.admin": "Admin",
   "nav.account": "Account",
