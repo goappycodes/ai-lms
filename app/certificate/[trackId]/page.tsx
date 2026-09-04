@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopNav from "@/components/TopNav";
 import { getTrack } from "@/lib/data";
-import { pct, student } from "@/lib/progress";
+import { pct } from "@/lib/progress";
 import { requirePage } from "@/lib/auth/guard";
 
+export const dynamic = "force-dynamic";
+
 export default async function CertificatePage({ params }: { params: { trackId: string } }) {
-  await requirePage();
+  // The name printed on a certificate must be the person holding it.
+  const user = await requirePage();
 
   const track = getTrack(params.trackId);
   if (!track) notFound();
@@ -28,7 +31,7 @@ export default async function CertificatePage({ params }: { params: { trackId: s
               <p className="cert-program">AI VEDA</p>
               <p className="cert-kicker">Certificate of Completion</p>
               <p className="cert-sub">This certifies that</p>
-              <h1 className="cert-name">{student.name}</h1>
+              <h1 className="cert-name">{user.full_name}</h1>
               <p className="cert-sub">
                 has completed the AI Veda <strong>{track.name}</strong> track ({track.audience})
               </p>

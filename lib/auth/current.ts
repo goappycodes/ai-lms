@@ -40,9 +40,7 @@ export function homeFor(role: Role): string {
     case "super_admin":
       return "/admin";
     case "school":
-      // School-level screens land in P5-04/P5-05. Until then a school sees the
-      // teacher view, which is the closest honest thing.
-      return "/teacher";
+      return "/school";
     case "teacher":
       return "/teacher";
     case "student":

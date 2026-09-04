@@ -63,6 +63,11 @@ async function login(username, password = PASSWORD) {
   return { jar: j, res: r };
 }
 
+// A username nobody has, different every run. A fixed one accumulates failed
+// attempts in audit_log and, after a few runs inside the lockout window, the
+// suite trips its own rate limiter and reports a false failure.
+const GHOST = `nobody.${Math.random().toString(36).slice(2, 10)}`;
+
 console.log(`Auth flow against ${BASE}\n`);
 
 const seeded = await req("/api/auth/seed-demo", { method: "POST" });
@@ -78,10 +83,10 @@ check("the login page is public", (await req("/login")).status, 200);
 
 console.log("\nSign-in");
 check("wrong password rejected", (await login("demo.teacher", "wrongpassword")).res.status, 401);
-check("unknown user rejected the same way", (await login("nobody.at.all")).res.status, 401);
+check("unknown user rejected the same way", (await login(GHOST)).res.status, 401);
 {
   const a = await (await login("demo.teacher", "wrongpassword")).res.json();
-  const b = await (await login("nobody.at.all")).res.json();
+  const b = await (await login(GHOST)).res.json();
   // Identical wording, or the response itself says which usernames exist.
   check("both failures give an identical message", a?.error, b?.error);
 }
@@ -100,6 +105,7 @@ check("student sent away from /admin", (await req("/admin", { jar: student })).l
 check("student sent away from /teacher", (await req("/teacher", { jar: student })).location, "/learning");
 check("teacher reaches /teacher", (await req("/teacher", { jar: teacher })).status, 200);
 check("school reaches /teacher", (await req("/teacher", { jar: school })).status, 200);
+  check("school reaches its own section", (await req("/school", { jar: school })).status, 200);
 check("student reaches /learning", (await req("/learning", { jar: student })).status, 200);
 check("student reaches a lesson", (await req("/learn/explorer/explorer-1", { jar: student })).status, 200);
 check("a signed-in user is bounced off /login", (await req("/login", { jar: student })).location, "/learning");
@@ -160,9 +166,9 @@ console.log("\nTiming — can a username be discovered by how long the answer ta
     return Date.now() - t0;
   };
   // Warm the connection so the first call does not carry pool setup.
-  await time("warmup.user");
+  await time(`warmup.${Math.random().toString(36).slice(2, 8)}`);
   const real = await time("demo.superadmin");
-  const ghost = await time("no.such.person.here");
+  const ghost = await time(`nobody.${Math.random().toString(36).slice(2, 10)}`);
   const delta = Math.abs(real - ghost);
   console.log(`    real user ${real}ms · unknown user ${ghost}ms · difference ${delta}ms`);
   check("the two are indistinguishable (within 80ms)", delta < 80, true);
@@ -180,7 +186,7 @@ console.log("\nLogin page and demo panel");
 
   for (const [account, home] of [
     ["demo.superadmin", "/admin"],
-    ["demo.school", "/teacher"],
+    ["demo.school", "/school"],
     ["demo.teacher", "/teacher"],
     ["demo.student1", "/learning"],
     ["demo.student2", "/learning"],
@@ -226,6 +232,56 @@ console.log("\nNavigation and the account menu");
 
   // Removed for the same reason as on the login page: it switched nothing.
   check("the dead language toggle is gone", s.includes('aria-label="Language"'), false);
+}
+
+/** Sign in as a demo account and keep its jar. */
+const as = async (account) => {
+  const j = jar();
+  const r = await req("/api/auth/demo-login", { jar: j, method: "POST", body: { account } });
+  return { jar: j, redirect: (await r.json())?.redirect };
+};
+
+console.log("\nRole landing and the school section");
+{
+  const student = await as("demo.student1");
+  const teacher = await as("demo.teacher");
+  const school = await as("demo.school");
+  const admin = await as("demo.superadmin");
+
+  check("a student lands on My Learning", student.redirect, "/learning");
+  check("a teacher lands on Teacher", teacher.redirect, "/teacher");
+  check("a school lands on School", school.redirect, "/school");
+  check("a super admin lands on Admin", admin.redirect, "/admin");
+  check("the root sends a school to /school", (await req("/", { jar: school.jar })).location, "/school");
+
+  check("a school may open /school", (await req("/school", { jar: school.jar })).status, 200);
+  check("a super admin may too", (await req("/school", { jar: admin.jar })).status, 200);
+  check("a teacher is bounced from /school", (await req("/school", { jar: teacher.jar })).location, "/teacher");
+  check("a student is bounced from /school", (await req("/school", { jar: student.jar })).location, "/learning");
+}
+
+console.log("\nIdentity on screen is the person signed in");
+{
+  const page = async (j, path) => {
+    const html = await (await fetch(BASE + path, { headers: j.header })).text();
+    // React splits interpolated text with comment markers; drop them so the
+    // rendered sentence can be matched as a human would read it.
+    return html.replace(/<!--[\s\S]*?-->/g, "");
+  };
+  const s1 = await as("demo.student1");
+  const s2 = await as("demo.student2");
+
+  const p1 = await page(s1.jar, "/learning");
+  check("the greeting names the signed-in student", p1.includes("Welcome back, Demo Student 1"), true);
+  check("their real school is shown", p1.includes("AI Veda Demo School"), true);
+  check("their real class is shown", p1.includes("Class Demo 6A"), true);
+  // These were hard-coded into the page for every user.
+  check("the hard-coded name is gone", p1.includes("Aparna Nair"), false);
+  check("the hard-coded school is gone", p1.includes("GHSS Kochi"), false);
+
+  const p2 = await page(s2.jar, "/learning");
+  check("a different student sees their own name", p2.includes("Welcome back, Demo Student 2"), true);
+  check("...and their own class", p2.includes("Class Demo 9A"), true);
 }
 
 console.log(`\n${pass} passed, ${fail} failed.`);
