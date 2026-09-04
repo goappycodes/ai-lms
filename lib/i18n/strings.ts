@@ -54,6 +54,15 @@ const en = {
   "role.school": "School",
   "role.teacher": "Teacher",
   "role.student": "Student",
+
+  "provision.created": "Account created",
+  "provision.once": "This password is shown once and cannot be recovered. Write it down or read it out now.",
+  "provision.username": "Username",
+  "provision.password": "Password",
+  "provision.copy": "Copy",
+  "provision.copied": "Copied",
+  "provision.done": "Done",
+  "provision.mustChange": "They will be asked to change it when they first sign in.",
 } as const;
 
 export type StringKey = keyof typeof en;

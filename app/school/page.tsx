@@ -2,9 +2,14 @@ import Link from "next/link";
 import TopNav from "@/components/TopNav";
 import { requirePage } from "@/lib/auth/guard";
 import { getSchoolClasses, getSchoolOverview, getSchoolTeachers } from "@/lib/db/org";
+import { AddClassForm, AddTeacherForm } from "@/components/admin/ProvisionForms";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// One year for now. When a second is needed this becomes a selector rather
+// than a constant — the schema already keys classes on it.
+const YEAR = "2026-27";
 
 // Every number on this page is a real count from the database. There are no
 // invented statistics here — when something is not built yet it says so rather
@@ -82,7 +87,10 @@ export default async function SchoolPage() {
           </div>
         </div>
 
-        <h2 className="section-title">Classes</h2>
+        <div className="section-head">
+          <h2 className="section-title">Classes</h2>
+          <AddClassForm schoolId={school.id} year={YEAR} />
+        </div>
         {classes.length === 0 ? (
           <div className="panel center">
             <p className="muted">
@@ -98,6 +106,7 @@ export default async function SchoolPage() {
               <span>Students</span>
               <span>Teachers</span>
               <span>Year</span>
+              <span></span>
             </div>
             {classes.map((c) => (
               <div className="tr" key={c.id}>
@@ -120,12 +129,20 @@ export default async function SchoolPage() {
                   )}
                 </span>
                 <span>{c.academic_year}</span>
+                <span>
+                  <Link className="btn btn-small btn-ghost" href={`/teacher/${c.id}`}>
+                    Open
+                  </Link>
+                </span>
               </div>
             ))}
           </div>
         )}
 
-        <h2 className="section-title">Teachers</h2>
+        <div className="section-head">
+          <h2 className="section-title">Teachers</h2>
+          <AddTeacherForm schoolId={school.id} />
+        </div>
         {teachers.length === 0 ? (
           <div className="panel center">
             <p className="muted">No teachers yet.</p>

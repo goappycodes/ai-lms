@@ -73,6 +73,7 @@ Which is typecheck, build, and the two suites that do not need a browser:
 | --- | --- |
 | `npm run db:smoke` | 25 schema behaviours, in a transaction that always rolls back |
 | `npm run verify:password` | 24 password-hashing behaviours |
+| `npm run verify:provisioning` | 38 provisioning and authorisation-boundary checks |
 | `npm run db:status` | which migrations are applied |
 
 `db:smoke` writes nothing — it is safe against the live database.
@@ -86,6 +87,11 @@ from a page that was perfectly fine.
 Running `npm run build` **directly** still writes to `.next` and will break a
 dev server, because that is what Vercel runs and it has to keep the default.
 Use `npm run verify`; it builds too.
+
+**Check the port before starting a dev server.** Next silently moves to 3001
+when 3000 is taken, so a second `npm run dev` leaves the stale one answering
+the suites — which then fail with 500s that have nothing to do with your code.
+`ss -ltnp | grep :300` first; this has cost time three times now.
 
 ---
 

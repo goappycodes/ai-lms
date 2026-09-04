@@ -1946,3 +1946,116 @@ a {
     text-decoration: none;
   }
 }
+
+/* --- Provisioning -------------------------------------------------------- */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.section-head .section-title {
+  margin-bottom: 0;
+}
+.page-head-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.provision-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.provision-form .field input,
+.provision-form .field select {
+  /* 16px so iOS does not zoom the page when the field takes focus. */
+  font-size: 16px;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.provision-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.field-hint {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.provision-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.provision-actions .btn {
+  min-height: 44px;
+}
+
+/* The one time a password is visible. Deliberately loud, and it stays until
+   dismissed — only the hash is stored, so there is no second chance. */
+.credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  padding: 16px 18px;
+  background: var(--cream);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.credentials-warn {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--crimson-ink);
+  font-weight: 600;
+}
+.credentials-pair {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+  align-items: baseline;
+}
+.credentials-pair dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.credentials-pair dd {
+  margin: 0;
+  min-width: 0;
+}
+.credentials-pair code {
+  font-size: 15px;
+  font-weight: 700;
+  word-break: break-all;
+}
+.credentials-actions {
+  display: flex;
+  gap: 8px;
+}
+.credentials-actions .btn {
+  min-height: 44px;
+}

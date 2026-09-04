@@ -15,9 +15,14 @@ export default async function AdminPage() {
             <h1>Admin Console</h1>
             <p className="muted">NEXIS · content, access &amp; usage</p>
           </div>
-          <Link className="btn btn-primary" href="/admin/studio">
-            Open Content Studio →
-          </Link>
+          <div className="page-head-actions">
+            <Link className="btn btn-ghost" href="/admin/schools">
+              Schools
+            </Link>
+            <Link className="btn btn-primary" href="/admin/studio">
+              Open Content Studio →
+            </Link>
+          </div>
         </div>
 
         <h2 className="section-title">Usage this month</h2>

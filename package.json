@@ -16,6 +16,7 @@
     "verify:password": "node --no-warnings scripts/verify-password.ts",
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:redirect": "node --no-warnings scripts/verify-redirect.ts",
+    "verify:provisioning": "node scripts/verify-provisioning.mjs",
     "users:create": "node --no-warnings --env-file=.env.local scripts/create-users.ts",
     "verify": "tsc --noEmit && NEXT_DIST_DIR=.next-verify next build && npm run db:smoke && npm run verify:password && npm run verify:redirect"
   },
