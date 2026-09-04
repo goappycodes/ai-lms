@@ -317,6 +317,14 @@ console.log("\nLayout regressions this project has already hit once");
     check("rows keep a readable minimum width", /min-width:\s*560px/.test(css), true);
     // Below 560px the nav bar is hidden, so the account menu carries the links.
     check("the account menu carries the nav on small screens", /user-menu-nav/.test(css), true);
+
+    // The canvas beyond the document is painted from the HTML background. Left
+    // transparent it took the body's light gradient, so flicking to the bottom
+    // of any page showed a white band under the dark footer.
+    check("the html element paints the overscroll area", /html\s*\{[^}]*background:/.test(css), true);
+    check("...with the same colour as the nav and footer", /html\s*\{[^}]*--ink-nav/.test(css), true);
+    // vh alone forces the body taller than the visible area on a phone.
+    check("the body uses svh so a short page does not scroll", /min-height:\s*100svh/.test(css), true);
   }
 }
 

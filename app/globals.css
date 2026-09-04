@@ -43,8 +43,22 @@ body {
   margin: 0;
   padding: 0;
 }
+html {
+  /* The canvas — the rubber-band area a phone reveals when you flick past the
+     bottom — is painted from the HTML background, not the body's. Left
+     transparent it inherited the body's light gradient, so flicking to the end
+     of any page showed a white band under the dark footer.
+     Both the top nav and the footer are this colour, so the reveal now matches
+     whichever end you overscroll from. */
+  background: var(--ink-nav);
+}
 body {
   min-height: 100vh;
+  /* svh is the viewport with the browser chrome showing. With vh alone the
+     body is forced taller than the visible area on a phone, so a short page
+     scrolls when it has no reason to. Declared second so it wins where
+     supported and falls back to vh where it is not. */
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
   color: var(--text);
