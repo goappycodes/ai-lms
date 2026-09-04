@@ -80,11 +80,9 @@ export default async function TeacherPage() {
                 <span>{c.student_count}</span>
                 <span>{c.academic_year}</span>
                 <span>
-                  {c.course_slug && (
-                    <Link className="btn btn-small btn-ghost" href={`/learn/${c.course_slug}`}>
-                      Open course
-                    </Link>
-                  )}
+                  <Link className="btn btn-small btn-ghost" href={`/teacher/${c.id}`}>
+                    Students
+                  </Link>
                 </span>
               </div>
             ))}

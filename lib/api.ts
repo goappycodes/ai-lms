@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { ZodSchema } from "zod";
+import type { ZodTypeAny, output } from "zod";
 
 export function ok(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
@@ -16,10 +16,15 @@ export function serverError(error: unknown) {
 }
 
 // Parse + validate a JSON body against a zod schema.
-export async function parseBody<T>(
+//
+// Generic over the schema rather than over one type: ZodSchema<T> ties the
+// input and output types together, so a schema using .default() or .transform()
+// silently degraded to a looser type and every field came back possibly
+// undefined. output<S> is what the schema actually produces.
+export async function parseBody<S extends ZodTypeAny>(
   req: Request,
-  schema: ZodSchema<T>
-): Promise<{ data: T } | { error: NextResponse }> {
+  schema: S
+): Promise<{ data: output<S> } | { error: NextResponse }> {
   let json: unknown;
   try {
     json = await req.json();

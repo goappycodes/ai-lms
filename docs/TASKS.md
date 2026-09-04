@@ -171,12 +171,12 @@ staff and classes.
 
 | ID | Task | Status | Notes |
 | --- | --- | --- | --- |
-| P2-10 | Schools list and CRUD | ⬜ | — |
-| P2-11 | Creating a school provisions its login | ⬜ | One form, both records — `D-14` |
-| P2-12 | Teachers CRUD — super admin and school | ⬜ | — |
-| P2-13 | Classes CRUD and teacher assignment | ⬜ | — |
-| P2-14 | Students — manual single add | ⬜ | Bulk import lands Day 12 |
-| P2-15 | Enrolment: class level maps to course | ⬜ | 5–7 Explorer · 8–10 Builder · 11–12 Achiever |
+| P2-10 | Schools list and CRUD | ✅ | `/admin/schools` — list with live counts, add form |
+| P2-11 | Creating a school provisions its login | ✅ | One form, both records — `D-14` |
+| P2-12 | Teachers CRUD — super admin and school | ✅ | Scoped: a school reaches only its own |
+| P2-13 | Classes CRUD and teacher assignment | ✅ | Assignment re-checks same-school in SQL |
+| P2-14 | Students — manual single add | ✅ | Bulk import lands Day 12 |
+| P2-15 | Enrolment: class level maps to course | ✅ | 5–7 Explorer · 8–10 Builder · 11–12 Achiever — derived, no enrolments table |
 
 **End of day:** ________________________________________________
 
