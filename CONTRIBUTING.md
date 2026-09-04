@@ -77,6 +77,12 @@ Which is typecheck, build, and the two suites that do not need a browser:
 
 `db:smoke` writes nothing — it is safe against the live database.
 
+`verify:auth` needs a dev server. Run it against a **freshly started** one:
+`next build` and `next dev` share `.next`, and a dev server started on top of a
+production build throws `__webpack_modules__[moduleId] is not a function` from
+a page that is perfectly fine. If a page 500s right after `npm run verify`,
+that is why — `rm -rf .next` and restart before believing it.
+
 ---
 
 ## Changing the database

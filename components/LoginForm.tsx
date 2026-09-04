@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { t } from "@/lib/i18n/strings";
 import type { DemoAccount } from "@/lib/auth/demo";
+import { safeRedirect } from "@/lib/auth/safe-redirect";
 
 const DEMO_BUTTONS: { account: DemoAccount; label: string }[] = [
   { account: "demo.superadmin", label: t("login.demo.superadmin") },
@@ -26,9 +27,9 @@ export default function LoginForm({ demoEnabled }: { demoEnabled: boolean }) {
   const [error, setError] = useState<string | null>(null);
 
   function go(destination: string) {
-    // Only follow `next` when it is a path on this site. An absolute URL here
-    // would turn the login page into an open redirect.
-    const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : destination;
+    // `next` is attacker-controlled — it comes straight off the query string.
+    // safeRedirect resolves it and drops anything that leaves this origin.
+    const safe = safeRedirect(next, window.location.origin, destination);
     // refresh() so server components re-render with the new session, rather
     // than showing a cached signed-out view.
     router.replace(safe);
