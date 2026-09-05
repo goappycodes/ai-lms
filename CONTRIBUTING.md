@@ -73,7 +73,8 @@ Which is typecheck, build, and the two suites that do not need a browser:
 | --- | --- |
 | `npm run db:smoke` | 25 schema behaviours, in a transaction that always rolls back |
 | `npm run verify:password` | 24 password-hashing behaviours |
-| `npm run verify:provisioning` | 38 provisioning and authorisation-boundary checks |
+| `npm run verify:provisioning` | 67 provisioning and authorisation-boundary checks |
+| `npm run verify:static` | 12 checks on what is prerendered — and what must not be |
 | `npm run db:status` | which migrations are applied |
 
 `db:smoke` writes nothing — it is safe against the live database.

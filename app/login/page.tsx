@@ -2,7 +2,20 @@ import { Suspense } from "react";
 import LoginForm from "@/components/LoginForm";
 import { demoLoginEnabled } from "@/lib/auth/demo";
 
-export const dynamic = "force-dynamic";
+/**
+ * Prerendered at build time, not rendered per request.
+ *
+ * This is the page every student hits first and the only one all of them hit,
+ * so at a hundred thousand of them it is the most-requested thing we serve.
+ * It reads no user data — the sign-in form is a client component and the
+ * `?next=` parameter is read in the browser — so there is nothing here worth a
+ * server render. Static means the CDN answers it and the origin never sees it.
+ *
+ * The one input is DEMO_LOGIN, which is baked in at build time. That is
+ * correct for a deploy-time flag: changing it already needs a redeploy for the
+ * server to notice, and production never sets it.
+ */
+export const dynamic = "force-static";
 
 // The language toggle that used to sit here was removed rather than left
 // decorative: it switched nothing. It returns in P3-05, once the catalogue has
