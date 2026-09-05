@@ -75,6 +75,11 @@ Which is typecheck, build, and the two suites that do not need a browser:
 | `npm run verify:password` | 24 password-hashing behaviours |
 | `npm run verify:provisioning` | 67 provisioning and authorisation-boundary checks |
 | `npm run verify:static` | 12 checks on what is prerendered — and what must not be |
+
+**Adding a `loading.tsx`? The segment needs a `layout.tsx` calling `requirePage()`.**
+A loading file makes Next stream a 200 before the page runs, so a `redirect()` from the page
+arrives too late to be an HTTP redirect and a revoked session sits on the skeleton for good.
+Resolving auth in the layout puts it back above that boundary. `verify:auth` enforces it.
 | `npm run db:status` | which migrations are applied |
 
 `db:smoke` writes nothing — it is safe against the live database.

@@ -2211,3 +2211,53 @@ dialog.modal[open] {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
 }
+
+/* Announced to a screen reader, invisible to everyone else. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Loading shells (loading.tsx). The nav placeholder mirrors the real bar so
+   the header does not change shape when the page arrives. */
+.skel-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-left: 30px;
+}
+@media (max-width: 560px) {
+  .skel-nav {
+    display: none;
+  }
+}
+.skel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.snake-top {
+  margin-bottom: 26px;
+}
+.skel-resources {
+  display: grid;
+  gap: 12px;
+}
+/* The shimmer is decorative; it should not move for anyone who asked that
+   nothing move. The bars stay, so the layout is unchanged. */
+@media (prefers-reduced-motion: reduce) {
+  .skel::after,
+  .snake > i,
+  .snake-spin {
+    animation: none;
+  }
+}

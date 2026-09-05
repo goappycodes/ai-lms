@@ -358,7 +358,27 @@ One query per page view for a student watching a lesson. Against a ~4,000/second
 with students spending most of their time inside a video that touches nothing, that is inside
 budget for 1,00,000 of them.
 
-Phase 3 (streaming, loaders and skeletons) is next.
+**Phase 3 is done.** Every screen that waits on the database now has a `loading.tsx` shaped
+like the page it stands in for — the right number of stat cards, the right column count in each
+table — so nothing jumps when the data lands. On a client-side navigation the skeleton is in
+the first chunk at 40–54 ms, while the data completes at 218–435 ms.
+
+**It also nearly shipped a serious bug, which is worth recording.** `loading.tsx` makes Next
+stream a 200 with the skeleton *before* the page component runs. A `redirect()` from inside the
+page then cannot be an HTTP redirect — it goes into the stream, and on a hard navigation the
+browser sits on the loading animation for good. A student whose account had just been disabled
+would watch a shimmer instead of being sent to sign in. Caught in a browser, not by a test.
+
+The fix is a `layout.tsx` per protected segment that resolves auth *above* the Suspense
+boundary, so the redirect is a real 307 again. The cost is that the shell waits for the session
+lookup on a hard load — about 50 ms — which is not a trade worth arguing about.
+
+`verify-auth.mjs` now asserts it across five routes: a revoked session must get `/login`, and
+must never come back as a 200 carrying a skeleton. Removing any one of those layouts fails the
+suite.
+
+> **Rule for anyone adding a `loading.tsx`:** the segment needs a `layout.tsx` that calls
+> `requirePage()`. Without it, a revoked session strands on the skeleton.
 
 ---
 
