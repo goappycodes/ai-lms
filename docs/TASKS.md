@@ -219,7 +219,7 @@ screens that will need it.
 | P3-06 | `/learning` reads courses from the database | ⬜ | The blocking defect, closed |
 | P3-07 | Course resume redirect reads real progress | ⬜ | — |
 | P3-08 | Lesson page reads from the database | ⬜ | — |
-| P3-09 | Caching — drop `force-dynamic`, revalidate on publish | ⬜ | `D-13`. Phase 2 of [PERFORMANCE.md](./PERFORMANCE.md) |
+| P3-09 | Caching — drop `force-dynamic`, revalidate on publish | 🟨 | `/login` prerendered, 261→15 ms. Shared content has nothing to cache until `P3-01`…`P3-04` move the student pages onto the database — the cache tag must land with the query, see [PERFORMANCE.md](./PERFORMANCE.md) |
 | P6-17 | Query audit — count database calls per page, remove repeats | ✅ | 5–8 per page → 2–4. Server time roughly halved — Phase 1 of [PERFORMANCE.md](./PERFORMANCE.md) |
 | P3-16 | Real worksheet and handout links, per locale | ⬜ | Two dead `#` links today |
 | P3-02 | Extract every English string into the catalogue | ⬜ | — |

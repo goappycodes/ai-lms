@@ -325,7 +325,40 @@ Connection ceiling: **15 → 200**.
 > keeps the 15-connection ceiling. `npm run db:smoke` fails loudly if it is wrong, but it cannot
 > see Vercel's environment.
 
-Phase 2 (caching) is next, and is the one that removes the ceiling rather than raising it.
+**Phase 2 is partly done, and the reason the rest is not is worth recording.**
+
+`/login` is now prerendered: **261 ms → 15 ms**, and on Vercel the CDN answers it so the origin
+never sees it at all. That is the single largest win available for this audience, because it is
+the only page every student loads and the only one all of them load.
+
+The rest of Phase 2 — caching shared course content — **cannot land yet, and should not be
+faked.** The student pages do not read course content from the database at all: `/learning`,
+`/learn/[trackId]` and `/learn/[trackId]/[sessionId]` render from the static `lib/data.ts`
+curriculum. The only database-backed content reads are in the studio and the API, which serve
+a handful of admins.
+
+So there is currently nothing on the student path to cache. Wrapping the studio's reads in a
+cache would be real work with no effect on the ninety-nine thousand nine hundred students, and
+counting it as Phase 2 would be misleading.
+
+**The cache belongs with the wiring.** When the student pages are moved onto the database
+(`P3-01`…`P3-04`), the query and its cache tag should arrive in the same change — a content
+read added without one is the thing that puts a page back on the origin for every view. That is
+now the note against those tasks rather than a phase of its own.
+
+What the student path costs today, after Phases 0–2:
+
+| Page | Round trips | Note |
+| --- | --- | --- |
+| `/login` | **0** | prerendered, CDN |
+| `/learning` | 2 | auth + the student's own school and class |
+| `/learn/[trackId]/[sessionId]` | 1 | auth only — the lesson itself is static data |
+
+One query per page view for a student watching a lesson. Against a ~4,000/second ceiling, and
+with students spending most of their time inside a video that touches nothing, that is inside
+budget for 1,00,000 of them.
+
+Phase 3 (streaming, loaders and skeletons) is next.
 
 ---
 
