@@ -16,7 +16,7 @@ decisions (`D-01`…`D-17`) recorded there.
 | Malayalam = **separate video per language** | No change. The `locale` field on the asset already assumed it |
 | Video URLs **must be protected** | **New work**: `P6-13`…`P6-16`. Edge Worker, tokens, cache verification |
 | Offline download = **no** | No change. Stays out of scope |
-| Concurrency = **500, with heavy caching** | Database is comfortable. The caching instruction is the real one — `P3-09`, `P6-17` |
+| Concurrency = **500, with heavy caching** | ~~Database is comfortable~~ **Revised 4 Sep: 1,00,000 students, concurrency above 500.** The database has a measured 200-connection ceiling — see [PERFORMANCE.md](./PERFORMANCE.md). Caching is now the load strategy, not a tuning step |
 
 > **One decision is worth making early.** Bulk import generates a password per account, and a
 > 300-student file cannot show them once on a screen the way the Day 6 forms do. The default is a
@@ -418,6 +418,7 @@ Add a row the moment something stops. Empty is good; stale is not.
 | Date | Task | Blocker | Owner | Needed by | Cleared |
 | --- | --- | --- | --- | --- | --- |
 | Sep 3 | P0-07 | Sentry auth token was pasted into a chat transcript — rotate it and update Vercel | | Sep 4 | ⬜ |
+| Sep 4 | P0-10 | `.env.local` uses the **session** pooler (5432), which refuses after 15 connections — two Vercel instances. The transaction pooler (6543) allows 200. Fixed in Phase 0 of [PERFORMANCE.md](./PERFORMANCE.md) | | Sep 5 | ⬜ |
 | Sep 4 | P0-09 | Vercel region is unknown and there is no `vercel.json`. If functions run in `iad1` while the database is in Mumbai, every page pays ~1–1.6 s of network. Cannot be measured until `P1-15` is fixed — see [PERFORMANCE.md](./PERFORMANCE.md) | | Sep 5 | ⬜ |
 | Sep 3 | P1-15 | Staging cannot reach Supabase — pooler returns `tenant/user postgres.mpdtcinhyygmcrntocwn not found`. Likely a paused project or a project-ref mismatch between `SUPABASE_DB_USER` and the host | | Sep 5 | ⬜ |
 
