@@ -323,6 +323,35 @@ console.log("\nIdentity on screen is the person signed in");
   );
 }
 
+// Every route with a loading.tsx streams a 200 with the skeleton before the
+// page component runs, so a redirect() from inside the page arrives too late
+// to be an HTTP redirect — it goes into the stream, and on a hard navigation
+// the browser sits on the loading animation for good. Someone whose account
+// was disabled would watch a shimmer instead of being sent to sign in.
+//
+// The fix is a layout above the Suspense boundary. This is the test that says
+// so: add a loading.tsx to a segment without one and it fails here.
+console.log("\nA revoked session is redirected, never left on a loading skeleton");
+{
+  for (const [account, path] of [
+    ["demo.student2", "/learning"],
+    ["demo.school", "/school"],
+    ["demo.teacher", "/teacher"],
+    ["demo.superadmin", "/admin"],
+    ["demo.superadmin", "/admin/schools"],
+  ]) {
+    const live = await as(account);
+    const copied = jar();
+    copied.raw = live.jar.header.cookie;
+    await req("/api/auth/logout", { jar: live.jar, method: "POST" });
+
+    const res = await fetch(BASE + path, { headers: copied.header, redirect: "manual" });
+    const body = res.status === 200 ? await res.text() : "";
+    check(`${path} sends a revoked session to /login`, res.headers.get("location"), "/login");
+    check(`...and does not strand it on the skeleton`, /class="skel/.test(body), false);
+  }
+}
+
 console.log("\nLayout regressions this project has already hit once");
 {
   const login = await (await fetch(BASE + "/login")).text();
@@ -407,7 +436,19 @@ console.log("\nLayout regressions this project has already hit once");
         // Cells of the header row that follows this table's opening tag.
         const after = html.slice(html.indexOf(tag) + tag.length);
         const head = (after.match(/<div class="tr th">([\s\S]*?)<\/div>\s*(?=<div)/) || [])[1] ?? "";
-        const cells = (head.match(/<span/g) ?? []).length;
+        // Direct children only. A skeleton cell is a <span> wrapping another
+        // <span class="skel">, so counting every tag doubles it — and the
+        // skeleton tables are worth checking too, because one that does not
+        // match the real column count makes the page jump when data arrives.
+        let depth = 0;
+        let cells = 0;
+        for (const tag of head.match(/<\/?span\b/g) ?? []) {
+          if (tag.startsWith("</")) depth--;
+          else {
+            if (depth === 0) cells++;
+            depth++;
+          }
+        }
         check(
           `${path} table ${i + 1} declares as many columns as it has cells`,
           cells === want,
