@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getPool } from "./pg";
 
 // Reads that turn a session into the facts a screen needs: which school, which
@@ -82,7 +83,12 @@ export interface SchoolOverview {
   student_count: number;
 }
 
-export function getSchoolOverview(schoolId: string): Promise<SchoolOverview | undefined> {
+/**
+ * Deduplicated per render: /school asks for the heading and SchoolDashboard
+ * asks again for the counts, and /admin/schools/[id] does the same. Both are
+ * reasonable on their own; together they were two identical round trips.
+ */
+export const getSchoolOverview = cache((schoolId: string): Promise<SchoolOverview | undefined> => {
   return one<SchoolOverview>(
     `SELECT s.id, s.name, s.district, s.code, s.status,
             (SELECT count(*)::int FROM classes c WHERE c.school_id = s.id) AS class_count,
@@ -93,7 +99,7 @@ export function getSchoolOverview(schoolId: string): Promise<SchoolOverview | un
        FROM schools s WHERE s.id = $1`,
     [schoolId]
   );
-}
+});
 
 export interface SchoolClass extends TeacherClass {
   teacher_names: string[];

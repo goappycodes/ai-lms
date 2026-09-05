@@ -89,6 +89,31 @@ async function rejects(name, expected, fn) {
 
 await c.connect();
 console.log(`Connected to ${env.SUPABASE_DB_HOST}\n`);
+
+// Which pooler we are on is a capacity decision, not a preference, so it is
+// asserted rather than left to whoever last edited .env.local.
+//
+// Measured against this project: the session pooler (5432) hands out a real
+// Postgres connection per client and refuses after 15 — two serverless
+// instances at the pool size we run. The transaction pooler (6543) allows 200
+// and returns the connection after each statement.
+console.log("Connection shape");
+{
+  const port = Number(env.SUPABASE_DB_PORT || 5432);
+  const pooled = /pooler\.supabase\.com$/.test(env.SUPABASE_DB_HOST ?? "");
+  if (!pooled) {
+    console.log("  · not a Supabase pooler host, skipping the port check");
+  } else if (port === 6543) {
+    console.log("  ✓ using the transaction pooler (6543) — 200 client connections");
+    pass++;
+  } else {
+    console.log(
+      `  ✗ using port ${port}. The session pooler refuses after 15 clients;\n` +
+        "      set SUPABASE_DB_PORT=6543 (see docs/PERFORMANCE.md, Phase 0)"
+    );
+    fail++;
+  }
+}
 await c.query("BEGIN");
 
 try {

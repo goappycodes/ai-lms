@@ -305,4 +305,28 @@ Named so they are not mistaken for oversights:
 
 ---
 
+## Progress
+
+**Phase 0 and Phase 1 are done.** Measured on the same machine, same production build, same
+warmed medians as the findings above.
+
+| Page | Round trips | | Server time | |
+| --- | --- | --- | --- | --- |
+| | before | after | before | after |
+| `/learning` | 5 | **2** | 318 ms | **162 ms** |
+| `/school` | 8 | **4** | 308 ms | **199 ms** |
+| `/teacher` | 6 | **3** | 293 ms | **154 ms** |
+| `/admin/schools` | 5 | **2** | 340 ms | **158 ms** |
+
+Connection ceiling: **15 → 200**.
+
+> **One thing must be changed by hand.** `.env.local` is not in git, so the port change is local
+> only. **`SUPABASE_DB_PORT` must be set to `6543` in the Vercel project** or the deployment
+> keeps the 15-connection ceiling. `npm run db:smoke` fails loudly if it is wrong, but it cannot
+> see Vercel's environment.
+
+Phase 2 (caching) is next, and is the one that removes the ceiling rather than raising it.
+
+---
+
 _AI Veda LMS · Performance plan v2 · measured 4 Sep 2026 · resized for 1,00,000 students_
