@@ -220,7 +220,7 @@ screens that will need it.
 | P3-07 | Course resume redirect reads real progress | ⬜ | — |
 | P3-08 | Lesson page reads from the database | ⬜ | — |
 | P3-09 | Caching — drop `force-dynamic`, revalidate on publish | ⬜ | `D-13`. Phase 2 of [PERFORMANCE.md](./PERFORMANCE.md) |
-| P6-17 | Query audit — count database calls per page, remove repeats | 🟨 | Counted: 5–8 per page, 3–5 of them repeats. Phase 1 of [PERFORMANCE.md](./PERFORMANCE.md) |
+| P6-17 | Query audit — count database calls per page, remove repeats | ✅ | 5–8 per page → 2–4. Server time roughly halved — Phase 1 of [PERFORMANCE.md](./PERFORMANCE.md) |
 | P3-16 | Real worksheet and handout links, per locale | ⬜ | Two dead `#` links today |
 | P3-02 | Extract every English string into the catalogue | ⬜ | — |
 | P3-05 | Language toggle wired to real locale, persisted per user | ⬜ | Decorative state today |
@@ -418,8 +418,8 @@ Add a row the moment something stops. Empty is good; stale is not.
 | Date | Task | Blocker | Owner | Needed by | Cleared |
 | --- | --- | --- | --- | --- | --- |
 | Sep 3 | P0-07 | Sentry auth token was pasted into a chat transcript — rotate it and update Vercel | | Sep 4 | ⬜ |
-| Sep 4 | P0-10 | `.env.local` uses the **session** pooler (5432), which refuses after 15 connections — two Vercel instances. The transaction pooler (6543) allows 200. Fixed in Phase 0 of [PERFORMANCE.md](./PERFORMANCE.md) | | Sep 5 | ⬜ |
-| Sep 4 | P0-09 | Vercel region is unknown and there is no `vercel.json`. If functions run in `iad1` while the database is in Mumbai, every page pays ~1–1.6 s of network. Cannot be measured until `P1-15` is fixed — see [PERFORMANCE.md](./PERFORMANCE.md) | | Sep 5 | ⬜ |
+| Sep 4 | P0-10 | Session pooler (5432) refused after 15 connections. Moved to the transaction pooler (6543) — 200. **Still to do: set `SUPABASE_DB_PORT=6543` in Vercel**, `.env.local` is not in git | | Sep 5 | 🟨 |
+| Sep 4 | P0-11 | Vercel region was unknown. `vercel.json` now pins `bom1`, which overrides the dashboard — no longer needs an answer | | Sep 4 | ✅ |
 | Sep 3 | P1-15 | Staging cannot reach Supabase — pooler returns `tenant/user postgres.mpdtcinhyygmcrntocwn not found`. Likely a paused project or a project-ref mismatch between `SUPABASE_DB_USER` and the host | | Sep 5 | ⬜ |
 
 ---

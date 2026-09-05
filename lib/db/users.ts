@@ -163,6 +163,26 @@ export function getLiveSession(sessionId: string): Promise<SessionRow | undefine
   ]);
 }
 
+/**
+ * The live session and its user, in one round trip.
+ *
+ * Was two: fetch the session, then fetch the user it names. The second could
+ * not start until the first came back, and against a database 50 ms away that
+ * shape cost 100 ms before a page had read anything of its own. The join
+ * answers both questions at once and enforces the same conditions — the
+ * session must exist, must not have expired, and must point at a real user.
+ */
+export function findUserByLiveSession(sessionId: string): Promise<User | undefined> {
+  return one<User>(
+    `SELECT u.*, COALESCE(sc.status = 'archived', false) AS school_archived
+       FROM sessions s
+       JOIN users u   ON u.id = s.user_id
+       LEFT JOIN schools sc ON sc.id = u.school_id
+      WHERE s.id = $1 AND s.expires_at > now()`,
+    [sessionId]
+  );
+}
+
 export function destroySession(sessionId: string): Promise<number> {
   return run("DELETE FROM sessions WHERE id = $1", [sessionId]);
 }

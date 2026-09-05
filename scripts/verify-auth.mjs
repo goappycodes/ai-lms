@@ -295,6 +295,32 @@ console.log("\nIdentity on screen is the person signed in");
   const p2 = await page(s2.jar, "/learning");
   check("a different student sees their own name", p2.includes("Welcome back, Demo Student 2"), true);
   check("...and their own class", p2.includes("Class Demo 9A"), true);
+
+  // getCurrentUser is wrapped in React's cache() so one render asks the
+  // database once however many components want the answer. That is only safe
+  // if the cache is scoped to a single request. If it ever leaked across
+  // them, two students loading at the same moment would see each other's
+  // pages — so this fires them interleaved and checks every response carries
+  // exactly one identity, its own.
+  const interleaved = await Promise.all(
+    Array.from({ length: 12 }, (_, i) =>
+      page(i % 2 ? s2.jar : s1.jar, "/learning").then((html) => ({
+        want: i % 2 ? "Demo Student 2" : "Demo Student 1",
+        other: i % 2 ? "Demo Student 1" : "Demo Student 2",
+        html,
+      }))
+    )
+  );
+  check(
+    "12 interleaved requests each get their own user",
+    interleaved.every((r) => r.html.includes(`Welcome back, ${r.want}`)),
+    true
+  );
+  check(
+    "...and none of them sees the other student anywhere on the page",
+    interleaved.every((r) => !r.html.includes(r.other)),
+    true
+  );
 }
 
 console.log("\nLayout regressions this project has already hit once");

@@ -1,9 +1,9 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, verifySession, type Role } from "./token";
 import {
   accountUsable,
-  findUserById,
-  getLiveSession,
+  findUserByLiveSession,
   toSafeUser,
   type SafeUser,
 } from "@/lib/db/users";
@@ -20,20 +20,31 @@ import {
  *      or a disabled account take effect immediately. A signed cookie stays
  *      cryptographically valid until it expires; only the database knows the
  *      session was revoked ten seconds ago.
+ *
+ * Wrapped in React's `cache()`, which deduplicates **within a single render**
+ * and nothing wider. A page calls this through requirePage() and TopNav calls
+ * it again for the same request; without this that is two lookups for one
+ * answer. It is not a cache across requests — the database is still asked once
+ * per request, which is what keeps revocation immediate. See
+ * docs/PERFORMANCE.md for why caching it any wider was rejected.
  */
-export async function getCurrentUser(): Promise<SafeUser | null> {
+export const getCurrentUser = cache(async (): Promise<SafeUser | null> => {
   const claims = await verifySession(cookies().get(SESSION_COOKIE)?.value);
   if (!claims) return null;
 
-  const session = await getLiveSession(claims.sid);
-  if (!session || session.user_id !== claims.uid) return null;
+  // One round trip, not two: the session row and the user it names arrive
+  // together. The session must still be live for this to return anything.
+  const user = await findUserByLiveSession(claims.sid);
 
-  const user = await findUserById(claims.uid);
+  // The cookie names a user as well as a session; if they disagree, the cookie
+  // is not describing this session and is refused.
+  if (!user || user.id !== claims.uid) return null;
+
   // Disabled, or belonging to a school that has been archived.
-  if (!user || !accountUsable(user)) return null;
+  if (!accountUsable(user)) return null;
 
   return toSafeUser(user);
-}
+});
 
 /** The session id from the cookie, without touching the database. */
 export async function getCurrentSessionId(): Promise<string | null> {
